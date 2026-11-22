@@ -115,12 +115,16 @@ namespace Ra2md.Assets
                 // 正是悬崖/水岸边缘错位三角的来源）。
                 var subX = ReadInt32(data, offset);
                 var subY = ReadInt32(data, offset + 4);
+                var extraDataOffset = ReadUInt32(data, offset + 8);
+                var zDataOffset = ReadUInt32(data, offset + 12);
+                var extraZDataOffset = ReadUInt32(data, offset + 16);
                 var extraX = ReadInt32(data, offset + 20) - subX;
                 var extraY = ReadInt32(data, offset + 24) - subY;
                 var extraW = (int)ReadUInt32(data, offset + 28);
                 var extraH = (int)ReadUInt32(data, offset + 32);
                 var flags = ReadUInt32(data, offset + 36);
                 var hasExtra = (flags & 0x01) != 0 && extraW > 0 && extraH > 0;
+                var hasZ = (flags & 0x02) != 0;
 
                 // 包围盒 = 基图格矩形 ∪ extra 矩形
                 var minX = hasExtra ? Math.Min(0, extraX) : 0;
@@ -136,50 +140,60 @@ namespace Ra2md.Assets
                     return file;
                 }
 
-                var cursor = offset + SubImageHeaderBytes;
                 var pixels = new byte[boundsW * boundsH];
-                var hasZ = (flags & 0x02) != 0;
-                var extraZOffset = ReadUInt32(data, offset + 16);
 
-                // 基图：菱形行序列，按格子矩形在包围盒里的位置落进去
-                if (!UnpackDiamond(data, ref cursor, pixels, boundsW, boundsH, tileW, tileH, -minX, -minY))
+                // 基图菱形：紧跟 52B 子图头，是唯一固定位置的平面。
+                if (!UnpackDiamond(data, offset + SubImageHeaderBytes, pixels, boundsW, boundsH,
+                        tileW, tileH, -minX, -minY))
                 {
                     file.Error = $"TMP 子图 [{i}] 基图数据不足";
                     return file;
                 }
 
-                // 高度(z)图：仅 flags bit1 存在（TmpImage 构造同此判定），跳过
-                if (hasZ && !SkipDiamond(data, ref cursor, tileW, tileH))
+                // 高度(z)图：按子图头存的 z_data_offset 定位（相对子图基址），不按顺序顺延；
+                // 本侧只跳过不参与上色，定位错会把后续 extra 悬崖壁字节读串段。
+                if (hasZ && zDataOffset > 0)
                 {
-                    file.Error = $"TMP 子图 [{i}] z 数据不足";
-                    return file;
+                    if (!SkipDiamond(data, offset + (int)zDataOffset, tileW, tileH))
+                    {
+                        file.Error = $"TMP 子图 [{i}] z 数据不足";
+                        return file;
+                    }
                 }
 
                 if (hasExtra)
                 {
-                    // extra 图形（悬崖壁等）：直接是矩形块，0 = 透明
+                    // extra 图形（悬崖壁/阴影）：按存的 extra_data_offset 定位，矩形块，0 = 透明。
+                    var extraStart = offset + (int)extraDataOffset;
                     for (var y = 0; y < extraH; y++)
                     {
+                        var srcRow = extraStart + y * extraW;
                         var dstRow = (extraY - minY + y) * boundsW + (extraX - minX);
-                        if (cursor + extraW > data.Length)
+                        if (srcRow + extraW > data.Length)
                         {
                             file.Error = $"TMP 子图 [{i}] extra 数据不足";
                             return file;
                         }
-                        Array.Copy(data, cursor, pixels, dstRow, extraW);
-                        cursor += extraW;
+                        for (var x = 0; x < extraW; x++)
+                        {
+                            var val = data[srcRow + x];
+                            if (val == 0) continue;
+                            var bx = extraX - minX + x;
+                            var by = extraY - minY + y;
+                            if (bx < 0 || bx >= boundsW || by < 0 || by >= boundsH) continue;
+                            pixels[by * boundsW + bx] = val;
+                        }
                     }
 
-                    // extra z 图：仅同时存在 z 且 extraZDataOffset>0 时才有
-                    if (hasZ && extraZOffset > 0)
+                    // extra z 图：按存的 extra_z_data_offset 定位，跳过。
+                    if (hasZ && extraZDataOffset > 0)
                     {
                         var extraZ = extraW * extraH;
-                        if (cursor + extraZ > data.Length)
+                        if (offset + (int)extraZDataOffset + extraZ > data.Length)
                         {
                             file.Error = $"TMP 子图 [{i}] extra z 数据不足";
                             return file;
                         }
-                        cursor += extraZ;
                     }
                 }
 
@@ -202,35 +216,37 @@ namespace Ra2md.Assets
             return file;
         }
 
-        /// <summary>菱形行走：行宽从 4 开始，前半每行 +4，后半每行 -4。</summary>
-        private static bool UnpackDiamond(byte[] data, ref int cursor, byte[] dest, int destW, int destH,
+        /// <summary>菱形行走：行宽从 4 开始，前半每行 +4，后半每行 -4。data[sourceStart] 起为该平面数据。</summary>
+        private static bool UnpackDiamond(byte[] data, int sourceStart, byte[] dest, int destW, int destH,
             int imgW, int imgH, int baseX, int baseY)
         {
             var rowWidth = 4;
+            var readPos = sourceStart;
             for (var y = 0; y < imgH; y++)
             {
                 var startX = (imgW - rowWidth) / 2;
-                if (cursor + rowWidth > data.Length) return false;
+                if (readPos + rowWidth > data.Length) return false;
                 var dstY = y + baseY;
                 if (dstY >= 0 && dstY < destH)
                 {
                     var dstX = startX + baseX;
                     if (dstX >= 0 && dstX + rowWidth <= destW)
-                        Array.Copy(data, cursor, dest, dstY * destW + dstX, rowWidth);
+                        Array.Copy(data, readPos, dest, dstY * destW + dstX, rowWidth);
                 }
-                cursor += rowWidth;
+                readPos += rowWidth;
                 rowWidth += (y < imgH / 2 - 1 ? 4 : -4);
             }
             return true;
         }
 
-        private static bool SkipDiamond(byte[] data, ref int cursor, int imgW, int imgH)
+        private static bool SkipDiamond(byte[] data, int sourceStart, int imgW, int imgH)
         {
             var rowWidth = 4;
+            var readPos = sourceStart;
             for (var y = 0; y < imgH; y++)
             {
-                if (cursor + rowWidth > data.Length) return false;
-                cursor += rowWidth;
+                if (readPos + rowWidth > data.Length) return false;
+                readPos += rowWidth;
                 rowWidth += (y < imgH / 2 - 1 ? 4 : -4);
             }
             return true;

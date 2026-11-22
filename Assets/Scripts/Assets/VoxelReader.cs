@@ -177,6 +177,22 @@ namespace Ra2md.Assets
         private static readonly Dictionary<string, VxlModel> ModelCache =
             new Dictionary<string, VxlModel>(StringComparer.OrdinalIgnoreCase);
 
+        private static VplFile _vpl;
+        private static bool _vplTried;
+
+        private static VplFile GetVpl()
+        {
+            if (_vplTried) return _vpl;
+            _vplTried = true;
+            var bytes = MenuResourceLibrary.LoadRawByName(
+                Ra2md.Managers.GlobalConfigManager.Resources.VplName, out _);
+            _vpl = VplFile.Parse(bytes);
+            Ra2md.Core.BootLog.Log(_vpl != null
+                ? "[体素] 光照表 " + Ra2md.Managers.GlobalConfigManager.Resources.VplName + " 已载入"
+                : "[体素] 光照表缺失，体素按原色索引绘制");
+            return _vpl;
+        }
+
         public static VxlModel GetModel(string name)
         {
             if (ModelCache.TryGetValue(name, out var m)) return m;
@@ -256,6 +272,8 @@ namespace Ra2md.Assets
                 var sz = limb.Size[2];
                 var vx0 = limb.Bounds[0];
                 var vy0 = limb.Bounds[1];
+                var pages = VoxelLighting.ComputePages(limb.Type, cos, sin);
+                var vpl = GetVpl();
 
                 for (var z = 0; z < sz; z++)
                 {
@@ -266,6 +284,8 @@ namespace Ra2md.Assets
                             var idx = z * sx * sy + y * sx + x;
                             var ci = limb.Color[idx];
                             if (ci == 0) continue;
+                            var ni = limb.Normal[idx];
+                            var shaded = vpl != null ? vpl.Lookup(pages[ni], ci) : ci;
 
                             var mx = vx0 + x;
                             var my = vy0 + y;
@@ -288,7 +308,7 @@ namespace Ra2md.Assets
                                     var di = ty * width + tx;
                                     if (wDepth < depth[di]) continue;
                                     depth[di] = wDepth;
-                                    pixels[di] = ci;
+                                    pixels[di] = shaded;
                                 }
                             }
                         }

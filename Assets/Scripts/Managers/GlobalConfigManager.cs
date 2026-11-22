@@ -237,6 +237,10 @@ namespace Ra2md.Managers
             public const string LuaScriptDir = "Lua";
             public const string LuaTestScript = "test_hooks.lua";
 
+            // ---- VXL 体素光照 ----
+            public const string VplName = "voxels.vpl";
+            public const int VplPageCount = 16;
+
             // ---- 地形剧院 ----
             public const string DefaultTheater = "TEMPERATE";
             public const string TheaterIniSuffix = ".ini";

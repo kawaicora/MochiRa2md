@@ -225,6 +225,18 @@ namespace Ra2md.Managers
             };
             public static readonly string[] MapPackageExtensions = { ".mmx", ".mix" };
 
+            // ---- INI 扩展指令（Ares [#include] / Phobos [$Include] / $Inherits）----
+            public const string AresIncludeSection = "#include";
+            public const string PhobosIncludeSection = "$Include";
+            public const string InheritsKey = "$Inherits";
+            public const string AresArchiveName = "ares.mix";
+            public const int IncludeMaxDepth = 64;
+            public const int IncludeMaxReferences = 1024;
+
+            // ---- Lua 脚本目录（StreamingAssets 下，外部可替换）----
+            public const string LuaScriptDir = "Lua";
+            public const string LuaTestScript = "test_hooks.lua";
+
             // ---- 地形剧院 ----
             public const string DefaultTheater = "TEMPERATE";
             public const string TheaterIniSuffix = ".ini";

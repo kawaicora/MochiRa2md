@@ -39,20 +39,39 @@ namespace Ra2md.World
         /// <summary>加载 rulesmd.ini（缺则 rules.ini）；mapDoc 可为 null（大厅阶段没有地图）。</summary>
         public static RulesDatabase Load(MapIniDocument mapDoc)
         {
-            byte[] bytes;
-            string origin;
             MapIniDocument rules = null;
             var source = "none";
-            if (MenuResourceLibrary.TryLoadFirst(
-                    Ra2md.Managers.GlobalConfigManager.Resources.RulesIniNames, out bytes, out origin) && bytes != null)
-            {
-                rules = MapIniDocument.Parse(MapIniDocument.DecodeText(bytes));
-                source = origin;
-            }
+            rules = LoadIniWithDirectives(Ra2md.Managers.GlobalConfigManager.Resources.RulesIniNames, out source);
             Current = new RulesDatabase(rules, mapDoc, source);
             BootLog.Log("[规则] 载入 " + source + "，段数=" + (rules != null ? rules.Sections.Count : 0)
                 + "，地图覆盖层=" + (mapDoc != null ? "有" : "无"));
             return Current;
+        }
+
+        /// <summary>是否挂载了 ares.mix：挂载后 INI 按 Ares 方式解析（[#include] 等）。</summary>
+        internal static bool ShipsAres()
+        {
+            var vfs = MenuResourceLibrary.EnsureMounted();
+            var archiveName = Ra2md.Managers.GlobalConfigManager.Resources.AresArchiveName;
+            foreach (var archive in vfs.Archives)
+            {
+                if (string.Equals(archive.Name, archiveName, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>按候选名取根 INI，并展开 include / inherits 扩展指令。</summary>
+        internal static MapIniDocument LoadIniWithDirectives(string[] candidates, out string origin)
+        {
+            if (!MenuResourceLibrary.TryLoadFirst(candidates, out var bytes, out origin) || bytes == null)
+            {
+                origin = "none";
+                return null;
+            }
+            var doc = MapIniDocument.Parse(MapIniDocument.DecodeText(bytes));
+            // Phobos 按构建开关；当前工程未带 Phobos 运行库，方言关闭。
+            return MapIniDocument.ExpandDirectives(doc, origin,
+                name => MenuResourceLibrary.LoadRawByName(name, out _), ShipsAres(), false);
         }
 
         public static RulesDatabase EnsureLoaded()
@@ -199,12 +218,8 @@ namespace Ra2md.World
 
         public static ArtDatabase Load(MapIniDocument mapDoc)
         {
-            byte[] bytes;
-            string origin;
-            MapIniDocument art = null;
-            if (MenuResourceLibrary.TryLoadFirst(
-                    Ra2md.Managers.GlobalConfigManager.Resources.ArtIniNames, out bytes, out origin) && bytes != null)
-                art = MapIniDocument.Parse(MapIniDocument.DecodeText(bytes));
+            MapIniDocument art = RulesDatabase.LoadIniWithDirectives(
+                Ra2md.Managers.GlobalConfigManager.Resources.ArtIniNames, out var origin);
             _current = new ArtDatabase(art, mapDoc);
             BootLog.Log("[美术] 载入 art " + (art != null ? "OK" : "缺失") + "，段数=" + (art != null ? art.Sections.Count : 0));
             return _current;

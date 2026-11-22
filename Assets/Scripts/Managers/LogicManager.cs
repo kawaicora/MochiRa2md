@@ -70,6 +70,9 @@ namespace Ra2md.Managers
             Phase = LogicPhase.Boot;
             ManagerBootstrap.Ensure();
             UIManager.Ensure();
+            LuaManager.Ensure();
+            LuaManager.Instance.LoadExternalScript(GlobalConfigManager.Resources.LuaTestScript);
+            LuaManager.Instance.NotifyGameStart();
             BootLog.Log("[逻辑] 初始化完成，进入菜单阶段");
             EnterMenu();
         }
@@ -91,6 +94,7 @@ namespace Ra2md.Managers
         {
             Session.Start(match);
             SetPhase(LogicPhase.Session);
+            LuaManager.Instance.NotifyMatchStart();
         }
 
         /// <summary>对局进行中（模拟已接管），阶段标记留位。</summary>
@@ -99,12 +103,17 @@ namespace Ra2md.Managers
         /// <summary>结束对局：收回会话，回到菜单。</summary>
         public void EndSession()
         {
+            LuaManager.Instance.NotifyMatchEnd();
             Session.End();
             EnterMenu();
         }
 
         /// <summary>申请退出（由退出确认流程最终置 Exit）。</summary>
-        public void RequestExit() => SetPhase(LogicPhase.Exit);
+        public void RequestExit()
+        {
+            LuaManager.Instance.NotifyGameEnd();
+            SetPhase(LogicPhase.Exit);
+        }
 
         private void SetPhase(LogicPhase phase)
         {
@@ -119,6 +128,10 @@ namespace Ra2md.Managers
             // 子管理器自身的每帧驱动由其 MonoBehaviour Update 收口；
             // 世界模拟不在本类跑，归对局会话与世界层。
             if (!enabled) return;
+            if (Phase == LogicPhase.Session || Phase == LogicPhase.Game)
+            {
+                LuaManager.Instance.NotifyUpdate(Time.deltaTime);
+            }
         }
     }
 }

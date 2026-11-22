@@ -61,8 +61,9 @@ namespace Ra2md.World
             if (UnityEngine.Input.GetMouseButtonUp(0) && _pressed)
             {
                 _pressed = false;
-                if (((Vector2)UnityEngine.Input.mousePosition - _pressPos).sqrMagnitude < 36f)
-                    TrySelectOnScreen(UnityEngine.Input.mousePosition);
+                // 参考口径：拖动到 5px 才激活框选，5px 以内算单击（ftol(sqrt(dx²+dy²)) > 4）。
+                if (((Vector2)UnityEngine.Input.mousePosition - _pressPos).sqrMagnitude < 25f)
+                    HandleLeftClick(UnityEngine.Input.mousePosition);
             }
 
             if (UnityEngine.Input.GetMouseButtonDown(1))
@@ -72,8 +73,8 @@ namespace Ra2md.World
             }
         }
 
-        /// <summary>屏幕点 → 格 → 找该格上属于当前玩家的单位视图。</summary>
-        public void TrySelectOnScreen(Vector2 screen)
+        /// <summary>左键：点到自己的单位/建筑就选中；已选中单位时点空地 = 下达移动指令。</summary>
+        private void HandleLeftClick(Vector2 screen)
         {
             if (GameHud.IsPointerOverUI(screen)) return;
             int cx, cy;
@@ -82,12 +83,19 @@ namespace Ra2md.World
                 ClearSelection();
                 return;
             }
-            var view = FindOwnUnitAt(cx, cy);
-            if (view == null) { ClearSelection(); return; }
-            SetSelection(view);
+            var view = FindOwnSelectableAt(cx, cy);
+            if (view != null) { SetSelection(view); return; }
+
+            // 空地：当前选中的是机动单位才给移动指令；建筑不下达移动。
+            var mover = Primary != null ? Primary.BoundUnit : null;
+            if (mover != null && mover.IsAlive) OrderMove(mover, Primary, cx, cy);
+            else ClearSelection();
         }
 
-        private MapObjectView FindOwnUnitAt(int cx, int cy)
+        /// <summary>屏幕点 → 格 → 找该格上属于当前玩家的单位或建筑视图（单击可选建筑；框选才排除建筑）。</summary>
+        public void TrySelectOnScreen(Vector2 screen) => HandleLeftClick(screen);
+
+        private MapObjectView FindOwnSelectableAt(int cx, int cy)
         {
             var house = SkirmishMatch.Current.PlayerHouseClass;
             var views = MapObjectLayer.Instance.Views;
@@ -95,14 +103,21 @@ namespace Ra2md.World
             for (var i = 0; i < views.Count; i++)
             {
                 var v = views[i];
-                if (v == null || v.Kind != "unit") continue;
-                var u = v.BoundUnit;
-                if (u == null || !u.IsAlive) continue;
-                if (house != null && u.Owner != house) continue;
-                if (u.CellX != cx || u.CellY != cy)
+                if (v == null) continue;
+                var isUnit = v.Kind == "unit";
+                var isBuilding = v.Kind == "building";
+                if (!isUnit && !isBuilding) continue;
+
+                var alive = isUnit ? v.BoundUnit != null && v.BoundUnit.IsAlive
+                                    : v.BoundBuilding != null && v.BoundBuilding.IsAlive;
+                if (!alive) continue;
+                var owner = isUnit ? v.BoundUnit.Owner : v.BoundBuilding.Owner;
+                if (house != null && owner != house) continue;
+
+                if (v.CellX != cx || v.CellY != cy)
                 {
-                    // MCV 的画布比一格大，隔壁格点到也算（±1 格容差）
-                    if (Mathf.Abs(u.CellX - cx) > 1 || Mathf.Abs(u.CellY - cy) > 1) continue;
+                    // 单位/大建筑画布比一格大，隔壁格点到也算（±1 格容差）
+                    if (Mathf.Abs(v.CellX - cx) > 1 || Mathf.Abs(v.CellY - cy) > 1) continue;
                 }
                 best = v;
                 break;

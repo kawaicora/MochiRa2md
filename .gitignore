@@ -1,0 +1,55 @@
+# ---- Unity 工程生成目录（不入库）----
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Aa]ppData/
+
+# ---- IDE / 工程文件 ----
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.csproj.user
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.orig
+
+# ---- Unity 生成的包/产物 ----
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage
+*.app
+*.exe
+*.dylib
+*.bundle
+*.appx
+*.arm
+
+# ---- 游戏原始数据归档（体积超过 GitHub 单文件上限，且属外部版权数据，不入库）----
+Assets/StreamingAssets/**/*.mix
+Assets/StreamingAssets/**/*.MIX
+
+# ---- 文档抽取/预览草稿（可由原始数据再生成）----
+Docs/_extract/
+Docs/_preview/
+
+# ---- 系统/临时 ----
+.DS_Store
+Thumbs.db

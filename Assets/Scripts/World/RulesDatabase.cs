@@ -348,6 +348,7 @@ namespace Ra2md.World
         public int ROT;
         public readonly List<string> Owner = new List<string>();
         public readonly List<string> Prerequisite = new List<string>();
+        public readonly List<string> PrerequisiteOverride = new List<string>();
         public string Primary;
         public string Secondary;
         public string Category;
@@ -427,6 +428,7 @@ namespace Ra2md.World
             ROT = sec.GetInt("ROT", 0);
             Owner.AddRange(MapIniDocument.SplitComma(sec.GetString("Owner", string.Empty)));
             Prerequisite.AddRange(MapIniDocument.SplitComma(sec.GetString("Prerequisite", string.Empty)));
+            PrerequisiteOverride.AddRange(MapIniDocument.SplitComma(sec.GetString("PrerequisiteOverride", string.Empty)));
             Primary = sec.GetString("Primary", string.Empty);
             Secondary = sec.GetString("Secondary", string.Empty);
             Category = sec.GetString("Category", string.Empty);
@@ -1017,6 +1019,42 @@ namespace Ra2md.World
         }
     }
 
+    /// <summary>建造前提六组（参考 prerequisite.rs：POWER/FACTORY/BARRACKS/RADAR/TECH/PROC），成员来自 [General] 对应列表。</summary>
+    public static class PrerequisiteGroups
+    {
+        public static readonly List<string> Power = new List<string>();
+        public static readonly List<string> Factory = new List<string>();
+        public static readonly List<string> Barracks = new List<string>();
+        public static readonly List<string> Radar = new List<string>();
+        public static readonly List<string> Tech = new List<string>();
+        public static readonly List<string> Proc = new List<string>();
+
+        public static bool TryGroup(string token, out List<string> list)
+        {
+            switch ((token ?? string.Empty).Trim().ToUpperInvariant())
+            {
+                case "POWER": list = Power; return true;
+                case "FACTORY": list = Factory; return true;
+                case "BARRACKS": list = Barracks; return true;
+                case "RADAR": list = Radar; return true;
+                case "TECH": list = Tech; return true;
+                case "PROC": list = Proc; return true;
+                default: list = null; return false;
+            }
+        }
+
+        public static void Load(RulesDatabase rules)
+        {
+            Power.Clear(); Factory.Clear(); Barracks.Clear(); Radar.Clear(); Tech.Clear(); Proc.Clear();
+            Power.AddRange(MapIniDocument.SplitComma(rules.GetString("General", "PrerequisitePower", string.Empty)));
+            Factory.AddRange(MapIniDocument.SplitComma(rules.GetString("General", "PrerequisiteFactory", string.Empty)));
+            Barracks.AddRange(MapIniDocument.SplitComma(rules.GetString("General", "PrerequisiteBarracks", string.Empty)));
+            Radar.AddRange(MapIniDocument.SplitComma(rules.GetString("General", "PrerequisiteRadar", string.Empty)));
+            Tech.AddRange(MapIniDocument.SplitComma(rules.GetString("General", "PrerequisiteTech", string.Empty)));
+            Proc.AddRange(MapIniDocument.SplitComma(rules.GetString("General", "PrerequisiteProc", string.Empty)));
+        }
+    }
+
     /// <summary>类型表的统一装配入口：顺序照 [VehicleTypes]…，就地表里查 art。</summary>
     public static class TypeTables
     {
@@ -1030,6 +1068,7 @@ namespace Ra2md.World
 
             ArmorTypes.Array.Clear();
             ArmorTypes.Array.AddRange(rules.GetValueList("ArmorTypes"));
+            PrerequisiteGroups.Load(rules);
 
             BuildList(rules, art, "VehicleTypes", UnitTypeClass.Array, (id, i) => new UnitTypeClass());
             BuildList(rules, art, "InfantryTypes", InfantryTypeClass.Array, (id, i) => new InfantryTypeClass());

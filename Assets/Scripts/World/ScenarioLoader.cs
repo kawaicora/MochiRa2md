@@ -212,6 +212,34 @@ namespace Ra2md.World
             return null;
         }
 
+        /// <summary>只探测场景是否在 VFS 可解析（不缓存、不解析），供名册过滤使用。</summary>
+        public static bool TryResolve(string mapName, out string resolvedName)
+        {
+            resolvedName = null;
+            if (string.IsNullOrWhiteSpace(mapName)) return false;
+            MenuResourceLibrary.EnsureMounted();
+
+            var candidates = new List<string> { mapName };
+            foreach (var ext in Extensions)
+            {
+                if (!mapName.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
+                {
+                    candidates.Add(mapName + ext);
+                }
+            }
+
+            foreach (var candidate in candidates)
+            {
+                if (TryReadScenarioBytes(candidate, out var mapBytes, out var innerName)
+                    && mapBytes != null && mapBytes.Length > 0)
+                {
+                    resolvedName = innerName ?? candidate;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public static ScenarioDocument LoadFromBytes(byte[] data, string sourceName)
         {
             string text = MapIniDocument.DecodeText(data);

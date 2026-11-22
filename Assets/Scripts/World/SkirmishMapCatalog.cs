@@ -6,6 +6,7 @@
 // 小节里的 Description=NAME:xxx / DESC:xxx 就是 CSF 的显示名键 —— 这就是“地图名字取得出来”的链路。
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Ra2md.Assets;
 using Ra2md.Core;
@@ -18,12 +19,12 @@ namespace Ra2md.World
         public sealed class Entry
         {
             public string Section;
-            public string FileName;        // 值 + ".map"
-            public string DescriptionKey;  // NAME:xxx / DESC:xxx
-            public string DisplayName;     // CSF 解出的显示名
-            public int MinPlayers = 1;
-            public int MaxPlayers;
-            public string GameMode;
+            public string FileName;        // 解析到的场景文件名
+            public string DescriptionKey;  // CSF 标签（Description 字段，可能为 null）
+            public string DisplayName;     // 最终显示名
+            public int MinPlayers = 2;
+            public int MaxPlayers = 4;
+            public List<string> GameModes = new List<string>();
         }
 
         private static List<Entry> _entries;
@@ -75,32 +76,70 @@ namespace Ra2md.World
             }
 
             var entries = multi.Entries;
+            var skippedMissing = 0;
             for (var i = 0; i < entries.Count; i++)
             {
                 var section = (entries[i].Value ?? string.Empty).Trim();
                 if (section.Length == 0) continue;
 
+                // 名册只收 VFS 里确实能解析到场景的条目；取不到地图包/场景的条目不进列表。
+                if (!ScenarioLoader.TryResolve(section, out var resolvedFile))
+                {
+                    skippedMissing++;
+                    continue;
+                }
+
                 var sec = ini.GetSection(section);
-                var key = sec != null ? sec.GetString("Description", null) : null;
-                var display = !string.IsNullOrEmpty(key) ? MenuStrings.Get(key, null) : null;
+
+                // 口径对照参考 pkt_display_name：DescriptionText 是直写文案；
+                // Description 是 CSF 标签（剥掉 NAME:/DESC: 前缀后按 key 取）；都没有才用文件名兜底。
+                var literal = sec != null ? sec.GetString("DescriptionText", null) : null;
+                var labelRaw = sec != null ? sec.GetString("Description", null) : null;
+                var label = StripLabelPrefix(labelRaw);
+                var display = !string.IsNullOrWhiteSpace(literal)
+                    ? literal.Trim()
+                    : (!string.IsNullOrEmpty(label) ? MenuStrings.Get(label, null) : null);
                 if (string.IsNullOrEmpty(display)) display = PrettyName(section);
+
+                var modes = sec != null
+                    ? MapIniDocument.SplitComma(sec.GetString("GameMode", string.Empty))
+                    : Array.Empty<string>();
 
                 result.Add(new Entry
                 {
                     Section = section,
-                    FileName = section + ".map",
-                    DescriptionKey = key,
+                    FileName = resolvedFile ?? section + ".map",
+                    DescriptionKey = label,
                     DisplayName = display,
-                    MinPlayers = sec != null ? sec.GetInt("MinPlayers", 1) : 1,
-                    MaxPlayers = sec != null ? sec.GetInt("MaxPlayers", 0) : 0,
-                    GameMode = sec != null ? sec.GetString("GameMode", null) : null,
+                    MinPlayers = sec != null ? sec.GetInt("MinPlayers", 2) : 2,
+                    MaxPlayers = sec != null ? sec.GetInt("MaxPlayers", 4) : 4,
+                    GameModes = new List<string>(modes.Where(m => !string.IsNullOrWhiteSpace(m))),
                 });
             }
 
             BootLog.Log($"[选图] missionsmd.pkt {_source} 官方地图 {result.Count} 张" +
+                (skippedMissing > 0 ? $"，缺场景跳过 {skippedMissing} 张" : string.Empty) +
                 (result.Count > 0 ? "，首项=" + result[0].Section + "/" + result[0].DisplayName +
                     "（" + (result[0].DescriptionKey ?? "无key") + "）" : string.Empty));
             return result;
+        }
+
+        /// <summary>剥掉 CSF 标签前的 NAME:/DESC: 前缀（部分改版 pkt 会带）。</summary>
+        private static string StripLabelPrefix(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return null;
+            var value = raw.Trim();
+            var colon = value.IndexOf(':');
+            if (colon > 0)
+            {
+                var prefix = value.Substring(0, colon).Trim();
+                if (string.Equals(prefix, "NAME", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(prefix, "DESC", StringComparison.OrdinalIgnoreCase))
+                {
+                    value = value.Substring(colon + 1).Trim();
+                }
+            }
+            return value.Length > 0 ? value : null;
         }
 
         /// <summary>没有 CSF 时的可读名：XBarrel → Barrel，XMP29U2 → MP29U2。</summary>

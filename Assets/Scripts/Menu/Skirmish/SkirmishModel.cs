@@ -333,6 +333,7 @@ namespace Ra2md.Menu
                 info.DisplayName = entry.DisplayName;
                 if (entry.MinPlayers > 0) info.MinPlayers = entry.MinPlayers;
                 if (entry.MaxPlayers > 0) info.MaxPlayers = SkirmishLimits.ClampMapSlots(entry.MaxPlayers);
+                info.Modes.AddRange(entry.GameModes);
                 info.Preview = MapPreview.ToTexture(MapPreview.Decode(doc.Ini));
                 Maps.Add(info);
                 seen[entry.Section] = true;

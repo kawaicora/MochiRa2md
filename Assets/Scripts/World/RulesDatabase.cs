@@ -1016,14 +1016,30 @@ namespace Ra2md.World
         }
     }
 
-    /// <summary>SuperWeaponTypeClass（[SuperWeaponTypes] 表）—— Type 决定行为（原版 SuperWeaponTypeClass::Type）。</summary>
+    /// <summary>SuperWeaponTypeClass（[SuperWeaponTypes] 表，参考 rules/superweapon_type.rs）。</summary>
     public sealed class SuperWeaponTypeClass : TypeClassBase
     {
         public static readonly List<SuperWeaponTypeClass> Array = new List<SuperWeaponTypeClass>();
         public string Type = string.Empty;      // 原版枚举名：IonCannon / Nuke / LightningStorm ...
-        public int RechargeTime;
-        public bool IsHouseAlways;              // 房主默认拥有（原版 SuperWeaponTypeClass 的 AlwaysGranted 语义近似）
+        public int RechargeTime = 4500;         // 帧；RechargeTime 写分钟，×900 折算，0 保留构造默认
+        public bool IsPowered = true;
+        public bool IsHouseAlways;
         public string Action;
+        public string SidebarImage;
+        public string SidebarPalette;
+        public bool ShowTimer;
+        public bool DisableableFromShell;
+        public bool UseChargeDrain;
+        public bool PreClick;
+        public bool PostClick;
+        public string SpecialSound;
+        public string StartSound;
+        public int FlashSidebarTabFrames = -1;
+        public bool AIDefendAgainst;
+        public bool ManualControl;
+        public bool ShowCameo = true;
+        public int LineMultiplier;
+        public double Range = -1.0;
 
         public static SuperWeaponTypeClass Find(string id) => TypeTables.Find(Array, id);
 
@@ -1033,9 +1049,26 @@ namespace Ra2md.World
             var sec = rules.GetSection(id);
             if (sec == null) return;
             Type = sec.GetString("Type", string.Empty);
-            RechargeTime = sec.GetInt("RechargeTime", 0);
+            var minutes = sec.GetDouble("RechargeTime", 0.0);
+            RechargeTime = minutes == 0.0 ? 4500 : (int)System.Math.Truncate(minutes * 900.0);
+            IsPowered = sec.GetBool("IsPowered", true);
             IsHouseAlways = sec.GetBool("IsHouseAlways");
             Action = sec.GetString("Action", string.Empty);
+            SidebarImage = sec.GetString("SidebarImage", string.Empty);
+            SidebarPalette = sec.GetString("SidebarPalette", string.Empty);
+            ShowTimer = sec.GetBool("ShowTimer");
+            DisableableFromShell = sec.GetBool("DisableableFromShell");
+            UseChargeDrain = sec.GetBool("UseChargeDrain");
+            PreClick = sec.GetBool("PreClick");
+            PostClick = sec.GetBool("PostClick");
+            SpecialSound = sec.GetString("SpecialSound", string.Empty);
+            StartSound = sec.GetString("StartSound", string.Empty);
+            FlashSidebarTabFrames = sec.GetInt("FlashSidebarTabFrames", -1);
+            AIDefendAgainst = sec.GetBool("AIDefendAgainst");
+            ManualControl = sec.GetBool("ManualControl");
+            ShowCameo = sec.GetBool("SW.ShowCameo", true);
+            LineMultiplier = sec.GetInt("LineMultiplier", 0);
+            Range = sec.GetDouble("Range", -1.0);
         }
     }
 

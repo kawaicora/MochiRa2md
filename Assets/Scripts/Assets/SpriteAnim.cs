@@ -19,12 +19,14 @@ namespace Ra2md.Assets
         public int LoopEnd;
         public int LoopCount = -1;
         public int RateMs;
+        public bool PingPong;
         public bool Active;
 
         private int _frame;
         private float _timer;
         private int _doneLoops;
         private bool _finished;
+        private int _dir = 1;
 
         public int CurrentFrame => _frame;
         public bool Finished => _finished;
@@ -40,6 +42,7 @@ namespace Ra2md.Assets
             anim.LoopEnd = art.AnimLoopEnd;
             anim.LoopCount = art.AnimLoopCount;
             anim.RateMs = art.AnimRateMs;
+            anim.PingPong = art.AnimPingPong;
 
             // End= 是帧数：结束帧 = End-1（参考 artmd 注释口径）。
             if (anim.LoopEnd <= anim.LoopStart && art.AnimEndCount > 0)
@@ -63,10 +66,15 @@ namespace Ra2md.Assets
             while (_timer >= RateMs)
             {
                 _timer -= RateMs;
-                _frame++;
+                _frame += _dir;
                 if (_frame > LoopEnd)
                 {
-                    if (LoopCount >= 0)
+                    if (PingPong)
+                    {
+                        _frame = LoopEnd - 1;
+                        _dir = -1;
+                    }
+                    else if (LoopCount >= 0)
                     {
                         _doneLoops++;
                         if (_doneLoops >= LoopCount)
@@ -75,8 +83,24 @@ namespace Ra2md.Assets
                             _frame = LoopEnd;
                             return _frame;
                         }
+                        _frame = LoopStart;
                     }
-                    _frame = LoopStart;
+                    else
+                    {
+                        _frame = LoopStart;
+                    }
+                }
+                else if (_frame < LoopStart)
+                {
+                    if (PingPong)
+                    {
+                        _frame = LoopStart + 1;
+                        _dir = 1;
+                    }
+                    else
+                    {
+                        _frame = LoopEnd;
+                    }
                 }
             }
             return _frame;

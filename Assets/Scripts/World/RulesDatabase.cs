@@ -198,6 +198,7 @@ namespace Ra2md.World
         public int AnimEndCount;   // End= 是帧数（参考注释：End 不是结束帧号，是序列帧数）
         public int AnimLoopCount = -1; // -1 = 无限循环；>=0 = 播完指定次数后停在末帧
         public int AnimRateMs;
+        public bool AnimPingPong;      // PingPong=yes：到头反向回放（不是回到首帧）
         public readonly List<string> Extra = new List<string>();
 
         public string ResolvedImage(string typeId)
@@ -258,6 +259,7 @@ namespace Ra2md.World
                 AnimEndCount = sec.GetInt("End", 0),
                 AnimLoopCount = sec.GetInt("LoopCount", -1),
                 AnimRateMs = sec.GetInt("Rate", 0),
+                AnimPingPong = sec.GetBool("PingPong", false),
                 Raw = sec,
             };
         }

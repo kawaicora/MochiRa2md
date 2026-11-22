@@ -51,7 +51,13 @@ namespace Ra2md.World
 
         // ---- art 动画（ActiveAnim / ActiveAnimTwo / IdleAnim …），通用 SpriteAnim 驱动 ----
         public string AnimImage;
+        public string AnimDamagedImage;
         public Ra2md.Assets.SpriteAnim Anim;
+        public Ra2md.Assets.SpriteAnim AnimNormal;
+        public Ra2md.Assets.SpriteAnim AnimDamaged;
+        public AnimRole Role;
+        public bool RequiresPower = true;   // <Key>Powered=no 时停电也不停
+        public bool PoweredSpecial;        // <Key>PoweredSpecial=yes：停电时隐藏，由 LowPower 槽接替
 
         [NonSerialized] public RectTransform Rect;
         [NonSerialized] public Image Image;
@@ -115,6 +121,21 @@ namespace Ra2md.World
         public bool TopAnchored;
         public int OffsetX;
         public int OffsetY;
+    }
+
+    /// <summary>建筑动画槽位角色（对齐参考 21 槽位：3..6 Active、7 PreProduction、8 Production、
+    /// 9 Turret、10..13 Special、14..17 Super、18 Idle、19 LowPower、20 SuperLowPower）。</summary>
+    public enum AnimRole
+    {
+        Active = 0,
+        PreProduction = 1,
+        Production = 2,
+        Special = 3,
+        Super = 4,
+        Idle = 5,
+        LowPower = 6,
+        SuperLowPower = 7,
+        Turret = 8,
     }
 
     public sealed class MapObjectLayer : MonoBehaviour
@@ -232,6 +253,25 @@ namespace Ra2md.World
                 var image = unit.Type != null ? unit.Type.ResolvedImage : null;
                 if (string.IsNullOrEmpty(image)) continue;
                 var view = SpawnUnit(unit);
+                if (view == null) { failed++; continue; }
+                things++;
+            }
+
+            // 步兵 / 飞机：同一套通用视图与动画口径，只是分类标签不同。
+            for (var i = 0; i < InfantryClass.Array.Count; i++)
+            {
+                var inf = InfantryClass.Array[i];
+                if (inf == null || !inf.IsAlive) continue;
+                var view = SpawnTechno(inf, "infantry");
+                if (view == null) { failed++; continue; }
+                things++;
+            }
+
+            for (var i = 0; i < AircraftClass.Array.Count; i++)
+            {
+                var air = AircraftClass.Array[i];
+                if (air == null || !air.IsAlive) continue;
+                var view = SpawnTechno(air, "aircraft");
                 if (view == null) { failed++; continue; }
                 things++;
             }
@@ -354,21 +394,40 @@ namespace Ra2md.World
         public MapObjectView SpawnUnit(UnitClass unit)
         {
             if (unit == null || !unit.IsAlive || unit.Type == null) return null;
-            var image = unit.Type.ResolvedImage;
-            if (string.IsNullOrEmpty(image)) return null;
-            var level = _terrain != null ? _terrain.HeightAt(unit.CellX, unit.CellY) : 0;
-            var view = Spawn("unit", unit.Type.ID, image, 0, unit.CellX, unit.CellY, level,
-                unit.Owner != null ? unit.Owner.ColorR : 0,
-                unit.Owner != null ? unit.Owner.ColorG : 0,
-                unit.Owner != null ? unit.Owner.ColorB : 0,
-                false, unit.IsVoxel, 0);
-            if (view != null)
-            {
-                view.BoundUnit = unit;
-                _dirtySort = true;
-                Sort();
-            }
+            var view = SpawnTechno(unit, "unit");
+            if (view != null) view.BoundUnit = unit;
             return view;
+        }
+
+        /// <summary>单位 / 步兵 / 飞机共用的视图装配：阵营重染 + 身体自身动画（art 段声明帧范围才动）。</summary>
+        private MapObjectView SpawnTechno(TechnoObjectClass entity, string kind)
+        {
+            if (entity == null || !entity.IsAlive || entity.Type == null) return null;
+            var image = entity.Type.ResolvedImage;
+            if (string.IsNullOrEmpty(image)) return null;
+            var level = _terrain != null ? _terrain.HeightAt(entity.CellX, entity.CellY) : 0;
+            var voxel = entity.Type.Art != null && entity.Type.Art.Voxel;
+            var view = Spawn(kind, entity.Type.ID, image, 0, entity.CellX, entity.CellY, level,
+                entity.Owner != null ? entity.Owner.ColorR : 0,
+                entity.Owner != null ? entity.Owner.ColorG : 0,
+                entity.Owner != null ? entity.Owner.ColorB : 0,
+                false, voxel, 0);
+            if (view == null) return null;
+
+            AttachBodyAnim(view, entity.Type.Art);
+            _dirtySort = true;
+            Sort();
+            return view;
+        }
+
+        /// <summary>把身体 SHP 自身的动画参数挂到通用状态机；参数不足时保持静态首帧。</summary>
+        private static void AttachBodyAnim(MapObjectView view, ArtRecord art)
+        {
+            if (view == null) return;
+            view.AnimNormal = Ra2md.Assets.SpriteAnim.FromArt(art);
+            view.Anim = view.AnimNormal;
+            view.AnimImage = view.ImageName;
+            view.FrameIndex = view.Anim != null && view.Anim.Active ? view.Anim.Start : 0;
         }
 
         /// <summary>运行时为已有 BuildingClass 建视图（基地车展开成建造厂走这里）。</summary>
@@ -397,61 +456,188 @@ namespace Ra2md.World
             _dirtySort = true;
         }
 
-        private static bool IsAnimKey(string lower)
+        /// <summary>一条建筑动画槽位（normal / damaged 两个变体，damaged 缺省回落到 normal）。</summary>
+        private sealed class AnimSlot
         {
-            if (lower.EndsWith("zadjust") || lower.EndsWith("ysort") || lower.EndsWith("damaged")) return false;
-            if (lower.EndsWith("two") || lower.EndsWith("three") || lower.EndsWith("four")) return false;
-            return lower == "activeanim" || lower == "idleanim" || lower == "specialanim"
-                || lower == "productionanim" || lower == "turretanim" || lower == "anim";
+            public string Key;
+            public string Normal;
+            public string Damaged;
+            public AnimRole Role;
+            public bool Powered = true;
+            public bool PoweredSpecial;
         }
 
         /// <summary>
-        /// artmd 的分层：一栋建筑 = 主体 SHP + 若干动画 SHP（油井 CAOILD 的 ActiveAnim=CAOILD_A 抽油机、
-        /// ActiveAnimTwo=CAOILD_F 火焰；船厂/基地的 ActiveAnimTwo 同理）。每层也是独立 GameObject，
-        /// ZAdjust 直接作用在屏幕 Y 上（正值向上），SortBias 保证动画压在主体之上。
+        /// 按参考槽位表枚举一栋建筑 art 段里声明的全部动画槽：
+        /// ActiveAnim/Two/Three/Four(3..6)、PreProductionAnim(7)、ProductionAnim(8)、
+        /// TurretAnim(9)、SpecialAnim/Two/Three/Four(10..13)、SuperAnim/Two/Three/Four(14..17)、
+        /// IdleAnim(18)、LowPower(19)、SuperLowPower(20)。
+        /// </summary>
+        private static List<AnimSlot> EnumerateBuildingAnimSlots(IniSection raw, IniSection rulesRaw)
+        {
+            var list = new List<AnimSlot>();
+            AddSlot(raw, list, "ActiveAnim", new[] { "", "Two", "Three", "Four" }, AnimRole.Active);
+            AddSlot(raw, list, "PreProductionAnim", new[] { "" }, AnimRole.PreProduction);
+            AddSlot(raw, list, "ProductionAnim", new[] { "" }, AnimRole.Production);
+            AddSlot(raw, list, "SpecialAnim", new[] { "", "Two", "Three", "Four" }, AnimRole.Special);
+            AddSlot(raw, list, "SuperAnim", new[] { "", "Two", "Three", "Four" }, AnimRole.Super);
+            AddSlot(raw, list, "IdleAnim", new[] { "" }, AnimRole.Idle);
+            AddSlot(raw, list, "LowPower", new[] { "" }, AnimRole.LowPower);
+            AddSlot(raw, list, "SuperLowPower", new[] { "" }, AnimRole.SuperLowPower);
+
+            // 炮塔槽 9：参考从 rules 段读 TurretAnim / TurretAnimDamaged（art 段不声明）。
+            var turretRaw = rulesRaw ?? raw;
+            var turret = turretRaw.GetString("TurretAnim", string.Empty);
+            if (!string.IsNullOrEmpty(turret))
+            {
+                list.Add(new AnimSlot
+                {
+                    Key = "TurretAnim",
+                    Normal = turret,
+                    Damaged = turretRaw.GetString("TurretAnimDamaged", turret),
+                    Role = AnimRole.Turret,
+                });
+            }
+            return list;
+        }
+
+        private static void AddSlot(IniSection raw, List<AnimSlot> list, string baseKey, string[] suffixes, AnimRole role)
+        {
+            for (var i = 0; i < suffixes.Length; i++)
+            {
+                var key = baseKey + suffixes[i];
+                var normal = raw.GetString(key, string.Empty);
+                if (string.IsNullOrEmpty(normal)) continue;
+                list.Add(new AnimSlot
+                {
+                    Key = key,
+                    Normal = normal,
+                    Damaged = raw.GetString(key + "Damaged", normal),
+                    Role = role,
+                    Powered = raw.GetBool(key + "Powered", true),
+                    PoweredSpecial = raw.GetBool(key + "PoweredSpecial", false),
+                });
+            }
+        }
+
+        /// <summary>
+        /// artmd 的分层：一栋建筑 = 主体 SHP + 若干动画 SHP（油井 CAOILD 的 ActiveAnim 抽油机、
+        /// ActiveAnimTwo 火焰；炮塔槽 9、SpecialAnim 围墙板片 …）。每层独立 GameObject，
+        /// ZAdjust 直接作用在屏幕 Y 上，SortBias 保证动画压在主体之上。
         /// </summary>
         private int SpawnBuildingParts(BuildingClass b, ArtRecord art, MapObjectView body)
         {
             if (art == null || art.Raw == null || body == null) return 0;
+            var raw = art.Raw;
+            var rulesRaw = RulesDatabase.Current != null && b.Type != null
+                ? RulesDatabase.Current.GetSection(b.Type.ID) : null;
             var cellX = body.CellX;
             var cellY = body.CellY;
+            var level = _terrain != null ? _terrain.HeightAt(cellX, cellY) : 0;
             var spawned = 0;
-            var entries = art.Raw.Entries;
-            for (var i = 0; i < entries.Count; i++)
+            var lowPower = b.Owner != null && b.Owner.HasLowPower();
+            var damaged = IsDamaged(b);
+
+            var slots = EnumerateBuildingAnimSlots(raw, rulesRaw);
+            for (var i = 0; i < slots.Count; i++)
             {
-                var key = (entries[i].Key ?? string.Empty).Trim();
-                var lower = key.ToLowerInvariant();
-                if (!IsAnimKey(lower)) continue;
-                var animId = (entries[i].Value ?? string.Empty).Trim();
-                if (animId.Length == 0) continue;
+                var slot = slots[i];
+                if (string.IsNullOrEmpty(slot.Normal)) continue;
 
-                var animArt = ArtDatabase.Current != null ? ArtDatabase.Current.Get(animId) : null;
-                var image = animArt != null ? animArt.ResolvedImage(animId) : animId;
+                // 建造阶段动画（起重机/预制件）：落位后不再显示；低功耗动画只在停电时显示。
+                if ((slot.Role == AnimRole.Production || slot.Role == AnimRole.PreProduction) && !b.IsOnHold) continue;
+                if ((slot.Role == AnimRole.LowPower || slot.Role == AnimRole.SuperLowPower) && !lowPower) continue;
 
-                var view = Spawn("building-anim", animId, image, 0, cellX, cellY, (_terrain != null ? _terrain.HeightAt(cellX, cellY) : 0));
+                var normalArt = ArtDatabase.Current != null ? ArtDatabase.Current.Get(slot.Normal) : null;
+                var normalImage = normalArt != null ? normalArt.ResolvedImage(slot.Normal) : slot.Normal;
+                var damagedName = string.IsNullOrEmpty(slot.Damaged) ? slot.Normal : slot.Damaged;
+                var hasDamaged = !string.Equals(damagedName, slot.Normal, StringComparison.OrdinalIgnoreCase);
+                var damagedArt = hasDamaged && ArtDatabase.Current != null ? ArtDatabase.Current.Get(damagedName) : null;
+                var damagedImage = damagedArt != null ? damagedArt.ResolvedImage(damagedName) : damagedName;
+
+                var view = Spawn("building-anim", slot.Normal, normalImage, 0, cellX, cellY, level,
+                    body.ColorR, body.ColorG, body.ColorB);
                 if (view == null) continue;
 
+                view.BoundBuilding = b;
                 view.SortBias = 1 + spawned;
-                view.AnchorOffsetX = body.AnchorOffsetX;      // 动画层必须和主体同一个地基中心
-                view.AnchorOffsetY = body.AnchorOffsetY;
+                var offsetRaw = slot.Role == AnimRole.Turret ? (rulesRaw ?? raw) : raw;
+                view.AnchorOffsetX = body.AnchorOffsetX + offsetRaw.GetInt(slot.Key + "X", 0);
+                view.AnchorOffsetY = body.AnchorOffsetY + offsetRaw.GetInt(slot.Key + "Y", 0);
                 view.DepthKey = body.DepthKey;
-                view.YAdjust = art.Raw.GetInt(key + "ZAdjust", 0);
+                view.YAdjust = offsetRaw.GetInt(slot.Key + "ZAdjust", 0);
+                view.Role = slot.Role;
+                view.RequiresPower = slot.Powered;
+                view.PoweredSpecial = slot.PoweredSpecial;
 
-                // 通用动画状态机：常驻部件（Active/Idle/Special/Turret）才进循环；
-                // ProductionAnim 是建造起重机一次性动画，落位后停首帧，不循环闪。
-                var isProduction = lower == "productionanim";
-                if (!isProduction) SetupAnim(view, image, animArt);
+                view.AnimNormal = Ra2md.Assets.SpriteAnim.FromArt(normalArt);
+                view.AnimImage = normalImage;
+                if (hasDamaged)
+                {
+                    view.AnimDamaged = Ra2md.Assets.SpriteAnim.FromArt(damagedArt);
+                    view.AnimDamagedImage = damagedImage;
+                }
+
+                ApplyVariant(view, damaged);
                 spawned++;
             }
             return spawned;
         }
 
-        private static void SetupAnim(MapObjectView view, string image, ArtRecord animArt)
+        /// <summary>受损态阈值：血量 ≤ 50%（规则 ConditionYellow=50%）切到 Damaged 变体。</summary>
+        private static bool IsDamaged(BuildingClass b)
         {
-            view.AnimImage = image;
-            var anim = Ra2md.Assets.SpriteAnim.FromArt(animArt);
-            view.Anim = anim;
-            view.FrameIndex = anim.Active ? anim.Start : 0;
+            return b != null && b.MaxHealth > 0 && b.Health * 2 <= b.MaxHealth;
+        }
+
+        /// <summary>按当前受损态选择 normal/damaged 变体；切换时回到该变体起始帧。返回是否发生切换。</summary>
+        private static bool ApplyVariant(MapObjectView view, bool damaged)
+        {
+            var useDamaged = damaged && view.AnimDamaged != null;
+            var next = useDamaged ? view.AnimDamaged : view.AnimNormal;
+            if (next == null) return false;
+            if (view.Anim == next) return false;
+            view.Anim = next;
+            view.AnimImage = useDamaged ? view.AnimDamagedImage : view.ImageName;
+            view.FrameIndex = next.Active ? next.Start : 0;
+            return true;
+        }
+
+        /// <summary>
+        /// 每帧刷新建筑部件：停电时 PoweredSpecial 槽隐藏、需电槽暂停；受损态切换变体并重载首帧。
+        /// 返回 true 表示本帧应暂停推进该动画。
+        /// </summary>
+        private bool RefreshBuildingPart(MapObjectView view)
+        {
+            var b = view.BoundBuilding;
+            if (b == null) return false;
+
+            var lowPower = b.Owner != null && b.Owner.HasLowPower();
+
+            if (view.Role == AnimRole.LowPower || view.Role == AnimRole.SuperLowPower || view.PoweredSpecial)
+            {
+                var visible = view.PoweredSpecial ? !lowPower : lowPower;
+                if (view.gameObject != null && view.gameObject.activeSelf != visible)
+                    view.gameObject.SetActive(visible);
+                if (!visible) return true;
+            }
+
+            var paused = view.RequiresPower && lowPower;
+
+            if (ApplyVariant(view, IsDamaged(b)))
+            {
+                var palette = ResolvePalette(view.Kind, view.TypeName, view.ColorR, view.ColorG, view.ColorB);
+                var sprite = LoadSprite(view.AnimImage, view.FrameIndex,
+                    (view.Kind ?? string.Empty) + ":" + (view.TypeName ?? string.Empty),
+                    palette, out var w, out var h, out _,
+                    view.ColorR, view.ColorG, view.ColorB);
+                if (sprite != null)
+                {
+                    view.Image.sprite = sprite;
+                    view.Rect.sizeDelta = new Vector2(w, h);
+                }
+            }
+            return paused;
         }
 
         private void AdvanceAnim(MapObjectView view, float dt)
@@ -507,7 +693,8 @@ namespace Ra2md.World
                 anchorY -= view.ImageOffsetY;
                 view.Rect.anchoredPosition = new Vector2(canvasX + view.AnchorOffsetX,
                     anchorY + view.YAdjust - view.AnchorOffsetY);
-                if (view.Anim != null && view.Anim.Active) AdvanceAnim(view, dt);
+                var paused = RefreshBuildingPart(view);
+                if (!paused && view.Anim != null && view.Anim.Active) AdvanceAnim(view, dt);
             }
         }
 

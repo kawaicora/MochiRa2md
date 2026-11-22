@@ -46,6 +46,16 @@ namespace Ra2md.World
         private RectTransform _minimapRect;
         private RectTransform _panelRect;
 
+        // ---- 建造栏 ----
+        private RectTransform _prodPanel;
+        private RectTransform _optionContainer;
+        private Text _queueText;
+        private Button _sellBtn;
+        private Button _repairBtn;
+        private readonly List<Button> _tabButtons = new List<Button>();
+        private readonly List<ProdOption> _currentOptions = new List<ProdOption>();
+        private float _prodRefreshTimer;
+
         private void Awake()
         {
             if (_instance != null && _instance != this) { Destroy(gameObject); return; }
@@ -78,6 +88,7 @@ namespace Ra2md.World
             _rootRect.offsetMax = Vector2.zero;
 
             BuildSidePanel();
+            BuildProductionPanel();
             BuildHint();
         }
 
@@ -127,10 +138,163 @@ namespace Ra2md.World
             _minimap.raycastTarget = false;
         }
 
+        // ---- 建造栏（分类标签 + 可建造条目 + 队列 + 变卖/维修）----
+
+        private sealed class OptionRow
+        {
+            public Button Button;
+            public Image Image;
+            public ProdOption Option;
+        }
+        private readonly List<OptionRow> _optionRows = new List<OptionRow>();
+
+        private static readonly ProdCategory[] Tabs =
+        {
+            ProdCategory.Building, ProdCategory.Defense, ProdCategory.Infantry,
+            ProdCategory.Vehicle, ProdCategory.Aircraft,
+        };
+        private static readonly string[] TabLabels = { "建筑", "防御", "步兵", "车辆", "飞机" };
+
+        private void BuildProductionPanel()
+        {
+            var panelGo = new GameObject("ProductionPanel");
+            panelGo.transform.SetParent(_rootRect, false);
+            _prodPanel = panelGo.AddComponent<RectTransform>();
+            _prodPanel.anchorMin = new Vector2(1f, 1f);
+            _prodPanel.anchorMax = new Vector2(1f, 1f);
+            _prodPanel.pivot = new Vector2(1f, 1f);
+            _prodPanel.anchoredPosition = new Vector2(-8f, -256f);
+            _prodPanel.sizeDelta = new Vector2(252f, 300f);
+
+            var bg = panelGo.AddComponent<Image>();
+            bg.color = new Color(0.06f, 0.07f, 0.08f, 0.86f);
+            bg.raycastTarget = true;
+            panelGo.AddComponent<RectMask2D>();
+
+            // 分类标签行
+            for (var i = 0; i < Tabs.Length; i++)
+            {
+                var tab = Tabs[i];
+                var label = TabLabels[i];
+                var btn = CreateButton(_prodPanel, label, new Vector2(6f + i * 48f, -8f),
+                    new Vector2(44f, 22f), () =>
+                    {
+                        ProductionController.ActiveTab = tab;
+                        RebuildOptions();
+                    });
+                _tabButtons.Add(btn);
+            }
+
+            // 条目容器
+            var optGo = new GameObject("Options");
+            optGo.transform.SetParent(_prodPanel, false);
+            var optRt = optGo.AddComponent<RectTransform>();
+            optRt.anchorMin = new Vector2(0f, 1f);
+            optRt.anchorMax = new Vector2(0f, 1f);
+            optRt.pivot = new Vector2(0f, 1f);
+            optRt.anchoredPosition = new Vector2(6f, -38f);
+            optRt.sizeDelta = new Vector2(240f, 176f);
+            _optionContainer = optRt;
+
+            _queueText = CreateText(_prodPanel, "Queue", new Vector2(6f, -222f),
+                new Vector2(240f, 52f), TextAnchor.UpperLeft, 12, new Color(0.85f, 0.9f, 0.95f, 1f));
+
+            _sellBtn = CreateButton(_prodPanel, "变卖", new Vector2(6f, -282f),
+                new Vector2(116f, 24f), OnSellSelected).GetComponent<Button>();
+            _repairBtn = CreateButton(_prodPanel, "维修", new Vector2(128f, -282f),
+                new Vector2(116f, 24f), OnRepairSelected).GetComponent<Button>();
+
+            RebuildOptions();
+        }
+
+        private Button CreateButton(RectTransform parent, string label, Vector2 pos, Vector2 size, Action onClick)
+        {
+            var go = new GameObject("Btn");
+            go.transform.SetParent(parent, false);
+            var rt = go.AddComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = pos;
+            rt.sizeDelta = size;
+
+            var img = go.AddComponent<Image>();
+            img.color = new Color(0.16f, 0.18f, 0.22f, 0.92f);
+            var btn = go.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(() => onClick());
+
+            var txt = CreateText(rt, "Label", new Vector2(4f, 0f),
+                new Vector2(size.x - 8f, size.y), TextAnchor.MiddleCenter, 12,
+                new Color(0.92f, 0.95f, 1f, 1f));
+            txt.text = label;
+            return btn;
+        }
+
+        private void RebuildOptions()
+        {
+            _optionRows.Clear();
+            if (_optionContainer == null) return;
+            for (var i = _optionContainer.childCount - 1; i >= 0; i--)
+                Destroy(_optionContainer.GetChild(i).gameObject);
+
+            var house = SkirmishMatch.Current != null ? SkirmishMatch.Current.PlayerHouseClass : null;
+            var options = ProductionController.OptionsFor(house, ProductionController.ActiveTab);
+            for (var i = 0; i < options.Count && i < 9; i++)
+            {
+                var opt = options[i];
+                var row = new OptionRow { Option = opt };
+                var btn = CreateButton(_optionContainer, opt.Label + " $" + opt.Cost,
+                    new Vector2(0f, -i * 28f), new Vector2(240f, 26f), () =>
+                    {
+                        ProductionController.Enqueue(house, opt.Type);
+                        RefreshOptionState();
+                    });
+                row.Button = btn;
+                row.Image = btn.targetGraphic as Image;
+                _optionRows.Add(row);
+            }
+            RefreshOptionState();
+        }
+
+        private void RefreshOptionState()
+        {
+            var house = SkirmishMatch.Current != null ? SkirmishMatch.Current.PlayerHouseClass : null;
+            for (var i = 0; i < _optionRows.Count; i++)
+            {
+                var row = _optionRows[i];
+                if (row.Image == null) continue;
+                var affordable = house == null || house.Balance >= row.Option.Cost;
+                var enabled = row.Option.Enabled && affordable;
+                row.Image.color = enabled
+                    ? new Color(0.16f, 0.18f, 0.22f, 0.92f)
+                    : new Color(0.10f, 0.10f, 0.12f, 0.7f);
+                var txt = row.Button.GetComponentInChildren<Text>();
+                if (txt != null) txt.color = enabled ? Color.white : new Color(0.55f, 0.58f, 0.62f, 1f);
+            }
+        }
+
+        private void OnSellSelected()
+        {
+            var building = SelectedBuilding();
+            ProductionController.SellBuilding(building);
+        }
+
+        private void OnRepairSelected()
+        {
+            var building = SelectedBuilding();
+            ProductionController.RepairBuilding(building);
+        }
+
+        private static BuildingClass SelectedBuilding()
+        {
+            var primary = PlayerController.Instance != null ? PlayerController.Instance.Primary : null;
+            return primary != null ? primary.BoundBuilding : null;
+        }
+
         private void BuildHint()
         {
             var go = new GameObject("Hint");
-            go.transform.SetParent(_rootRect, false);
             var rt = go.AddComponent<RectTransform>();
             rt.anchorMin = new Vector2(0f, 0f);
             rt.anchorMax = new Vector2(0f, 0f);
@@ -175,6 +339,8 @@ namespace Ra2md.World
             var p = new Vector2(screen.x / Screen.width, screen.y / Screen.height);
             if (self._panelRect != null && RectTransformUtility.RectangleContainsScreenPoint(self._panelRect, screen))
                 return true;
+            if (self._prodPanel != null && RectTransformUtility.RectangleContainsScreenPoint(self._prodPanel, screen))
+                return true;
             return self._hint != null && RectTransformUtility.RectangleContainsScreenPoint(
                 self._hint.rectTransform, screen);
         }
@@ -182,9 +348,32 @@ namespace Ra2md.World
         private void Update()
         {
             if (SkirmishMatch.Current == null) return;
+            ProductionController.Tick(Time.deltaTime);
             UpdateTexts();
             UpdateMinimap();
             HandleMinimapClick();
+
+            _prodRefreshTimer -= Time.deltaTime;
+            if (_prodRefreshTimer <= 0f)
+            {
+                _prodRefreshTimer = 0.6f;
+                RebuildOptions();
+                RefreshQueue();
+            }
+        }
+
+        private void RefreshQueue()
+        {
+            if (_queueText == null) return;
+            var sb = new System.Text.StringBuilder();
+            for (var i = 0; i < ProductionController.Queue.Count; i++)
+            {
+                var item = ProductionController.Queue[i];
+                sb.AppendLine(item.Type.UIName + "  " + Mathf.RoundToInt((float)item.Progress * 100f) + "%");
+            }
+            for (var i = 0; i < ProductionController.ReadyBuildings.Count; i++)
+                sb.AppendLine("待放置: " + ProductionController.ReadyBuildings[i].UIName);
+            _queueText.text = sb.ToString();
         }
 
         private void UpdateTexts()
@@ -330,6 +519,7 @@ namespace Ra2md.World
 
         public void Close()
         {
+            ProductionController.Clear();
             if (_minimapTexture != null) Destroy(_minimapTexture);
             _minimapTexture = null;
             for (var i = transform.childCount - 1; i >= 0; i--)

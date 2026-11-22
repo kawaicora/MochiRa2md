@@ -140,8 +140,7 @@ namespace Ra2md.World
         }
 
         /// <summary>把逗号列表按索引取（[VehicleTypes] 的 1=AMCV 这种，不保证从 0 开始）。</summary>
-        public List<string> GetIndexedList(string section)
-        {
+        public List<string> GetIndexedList(string section)        {
             var result = new List<string>();
             var sec = GetSection(section);
             if (sec == null) return result;
@@ -172,6 +171,21 @@ namespace Ra2md.World
                 map[index] = value;
             }
             return map;
+        }
+
+        /// <summary>规则段名并集（地图覆盖段同名合并），供无清单的家族（武器/弹头）扫描装配。</summary>
+        public List<string> AllSectionNames()
+        {
+            var names = new List<string>();
+            if (_rules != null)
+            {
+                foreach (var s in _rules.Sections) if (!names.Contains(s.Name)) names.Add(s.Name);
+            }
+            if (_map != null)
+            {
+                foreach (var s in _map.Sections) if (!names.Contains(s.Name)) names.Add(s.Name);
+            }
+            return names;
         }
     }
 
@@ -601,6 +615,268 @@ namespace Ra2md.World
         }
     }
 
+    /// <summary>WeaponTypeClass（武器段，参考 rules/weapon_type.rs + 有序处理 pass_families）。</summary>
+    public sealed class WeaponTypeClass : TypeClassBase
+    {
+        public static readonly List<WeaponTypeClass> Array = new List<WeaponTypeClass>();
+        public int Damage;
+        public int RangeLeptons;
+        public int MinRangeLeptons;
+        public int ROF;
+        public int Speed;               // ReadSpeed 口径：0..100 → (v&lt;&lt;8)/100，上限 255
+        public int Burst = 1;
+        public string Projectile;
+        public string Warhead;
+        public readonly List<string> Report = new List<string>();
+        public int AmbientDamage;
+        public int LaserDuration = 10;
+        public int RadLevel;
+        public string RadType;
+        public bool RevealOnFire = true;
+        public bool TerrainFire;
+        public bool OmniFire;
+        public bool DistributedWeaponFire;
+        public bool IsRailgun;
+        public bool Lobber;
+        public bool Bright;
+        public bool IsSonic;
+        public bool Spawner;
+        public bool LimboLaunch;
+        public bool DecloakToFire = true;
+        public bool CellRangefinding;
+        public bool FireOnce;
+        public bool NeverUse;
+        public bool InfiniteMindControl;
+        public bool FireWhileMoving = true;
+        public bool DrainWeapon;
+        public bool FireInTransport = true;
+        public bool Suicide;
+        public bool TurboBoost;
+        public bool Supress;
+        public bool Camera;
+        public bool Charges;
+        public bool IsLaser;
+        public bool DiskLaser;
+        public bool IsLine;
+        public bool IsBigLaser;
+        public bool IsHouseColor;
+        public bool IonSensitive;
+        public bool AreaFire;
+        public bool IsElectricBolt;
+        public bool DrawBoltAsLaser;
+        public bool IsAlternateColor;
+        public bool IsRadBeam;
+        public bool IsRadEruption;
+        public bool IsMagBeam;
+        public int ProjectileRange = 100000;
+        public string AssaultAnim;
+        public string OccupantAnim;
+        public string OpenToppedAnim;
+        public string AttachedParticleSystem;
+        public readonly List<string> Anim = new List<string>();
+        public string LaserInnerColor;
+        public string LaserOuterColor;
+        public string LaserOuterSpread;
+
+        public static WeaponTypeClass Find(string id) => TypeTables.Find(Array, id);
+
+        public override void LoadFrom(RulesDatabase rules, string id, int index)
+        {
+            base.LoadFrom(rules, id, index);
+            var sec = rules.GetSection(id);
+            if (sec == null) return;
+            Damage = sec.GetInt("Damage", 0);
+            RangeLeptons = sec.GetRangeLeptons("Range", 0);
+            MinRangeLeptons = sec.GetRangeLeptons("MinimumRange", 0);
+            ROF = sec.GetInt("ROF", 0);
+            Speed = sec.GetWeaponSpeed("Speed", 0);
+            Burst = sec.GetInt("Burst", 1);
+            Projectile = sec.GetString("Projectile", string.Empty);
+            Warhead = sec.GetString("Warhead", string.Empty);
+            Report.AddRange(MapIniDocument.SplitComma(sec.GetString("Report", string.Empty)));
+            AmbientDamage = sec.GetInt("AmbientDamage", 0);
+            LaserDuration = sec.GetInt("LaserDuration", 10);
+            RadLevel = sec.GetInt("RadLevel", 0);
+            RadType = sec.GetString("RadType", string.Empty);
+            RevealOnFire = sec.GetBool("RevealOnFire", true);
+            TerrainFire = sec.GetBool("TerrainFire");
+            OmniFire = sec.GetBool("OmniFire");
+            DistributedWeaponFire = sec.GetBool("DistributedWeaponFire");
+            IsRailgun = sec.GetBool("IsRailgun");
+            Lobber = sec.GetBool("Lobber");
+            Bright = sec.GetBool("Bright");
+            IsSonic = sec.GetBool("IsSonic");
+            Spawner = sec.GetBool("Spawner");
+            LimboLaunch = sec.GetBool("LimboLaunch");
+            DecloakToFire = sec.GetBool("DecloakToFire", true);
+            CellRangefinding = sec.GetBool("CellRangefinding");
+            FireOnce = sec.GetBool("FireOnce");
+            NeverUse = sec.GetBool("NeverUse");
+            InfiniteMindControl = sec.GetBool("InfiniteMindControl");
+            FireWhileMoving = sec.GetBool("FireWhileMoving", true);
+            DrainWeapon = sec.GetBool("DrainWeapon");
+            FireInTransport = sec.GetBool("FireInTransport", true);
+            Suicide = sec.GetBool("Suicide");
+            TurboBoost = sec.GetBool("TurboBoost");
+            Supress = sec.GetBool("Supress");
+            Camera = sec.GetBool("Camera");
+            Charges = sec.GetBool("Charges");
+            IsLaser = sec.GetBool("IsLaser");
+            DiskLaser = sec.GetBool("DiskLaser");
+            IsLine = sec.GetBool("IsLine");
+            IsBigLaser = sec.GetBool("IsBigLaser");
+            IsHouseColor = sec.GetBool("IsHouseColor");
+            IonSensitive = sec.GetBool("IonSensitive");
+            AreaFire = sec.GetBool("AreaFire");
+            IsElectricBolt = sec.GetBool("IsElectricBolt");
+            DrawBoltAsLaser = sec.GetBool("DrawBoltAsLaser");
+            IsAlternateColor = sec.GetBool("IsAlternateColor");
+            IsRadBeam = sec.GetBool("IsRadBeam");
+            IsRadEruption = sec.GetBool("IsRadEruption");
+            IsMagBeam = sec.GetBool("IsMagBeam");
+            ProjectileRange = sec.GetRangeLeptons("ProjectileRange", 100000);
+            AssaultAnim = sec.GetString("AssaultAnim", string.Empty);
+            OccupantAnim = sec.GetString("OccupantAnim", string.Empty);
+            OpenToppedAnim = sec.GetString("OpenToppedAnim", string.Empty);
+            AttachedParticleSystem = sec.GetString("AttachedParticleSystem", string.Empty);
+            Anim.AddRange(MapIniDocument.SplitComma(sec.GetString("Anim", string.Empty)));
+            LaserInnerColor = sec.GetString("LaserInnerColor", string.Empty);
+            LaserOuterColor = sec.GetString("LaserOuterColor", string.Empty);
+            LaserOuterSpread = sec.GetString("LaserOuterSpread", string.Empty);
+        }
+    }
+
+    /// <summary>WarheadTypeClass（弹头段，参考 rules/warhead_type.rs）。</summary>
+    public sealed class WarheadTypeClass : TypeClassBase
+    {
+        public static readonly List<WarheadTypeClass> Array = new List<WarheadTypeClass>();
+        public readonly List<double> Verses = new List<double>(11);
+        public double CellSpread;
+        public double CellInset;
+        public double PercentAtMax = 1.0;
+        public double DelayKillAtMax = 1.0;
+        public bool CausesDelayKill;
+        public int DelayKillFrames = 5;
+        public bool Wall;
+        public bool Wood;
+        public bool Fire;
+        public bool PenetratesBunker;
+        public bool AffectsAllies = true;
+        public bool? AffectsOwner;
+        public bool AffectsEnemies = true;
+        public bool AffectsNeutral = true;
+        public bool PsychicDamage;
+        public int InfDeath;
+        public double Deform;
+        public int DeformThreshold;
+        public int DeformDepth = 1;
+        public int DeformRadius;
+        public bool Bullets;
+        public bool Veinhole;
+        public int ShakeXlo, ShakeXhi, ShakeYlo, ShakeYhi;
+        public bool Rocker;
+        public bool DirectRocker;
+        public bool Tiberium;
+        public bool Bright;
+        public bool CLDisableRed, CLDisableGreen, CLDisableBlue;
+        public double CombatLightSize;
+        public double ProneDamage = 1.0;
+        public bool WallAbsoluteDestroyer;
+        public bool Temporal;
+        public bool IsLocomotor;
+        public string Locomotor;
+        public bool Parasite;
+        public bool Psychedelic;
+        public bool IvanBomb;
+        public bool MindControl;
+        public bool Poison;
+        public bool Airstrike;
+        public bool Radiation;
+        public bool Culling;
+        public int Paralyzes;
+        public bool Sonic;
+        public bool MakesDisguise;
+        public bool ElectricAssault;
+        public bool BombDisarm;
+        public bool NukeMaker;
+        public bool AffectsGround = true;
+        public bool AffectsAir = true;
+        public bool EffectsRequireVerses = true;
+        public int MaxDebris;
+        public int MinDebris;
+
+        public static WarheadTypeClass Find(string id) => TypeTables.Find(Array, id);
+
+        public override void LoadFrom(RulesDatabase rules, string id, int index)
+        {
+            base.LoadFrom(rules, id, index);
+            var sec = rules.GetSection(id);
+            if (sec == null) return;
+            Verses.Clear();
+            var verses = sec.GetVerses("Verses", 1.0);
+            if (verses != null) Verses.AddRange(verses);
+            while (Verses.Count < 11) Verses.Add(1.0);
+            CellSpread = sec.GetDouble("CellSpread", 0.0);
+            CellInset = sec.GetDouble("CellInset", 0.0);
+            PercentAtMax = sec.GetDouble("PercentAtMax", 1.0);
+            DelayKillAtMax = sec.GetDouble("DelayKillAtMax", 1.0);
+            CausesDelayKill = sec.GetBool("CausesDelayKill");
+            DelayKillFrames = sec.GetInt("DelayKillFrames", 5);
+            Wall = sec.GetBool("Wall");
+            Wood = sec.GetBool("Wood");
+            Fire = sec.GetBool("Fire");
+            PenetratesBunker = sec.GetBool("PenetratesBunker");
+            AffectsAllies = sec.GetBool("AffectsAllies", true);
+            AffectsOwner = sec.HasKey("AffectsOwner") ? sec.GetBool("AffectsOwner", false) : (bool?)null;
+            AffectsEnemies = sec.GetBool("AffectsEnemies", true);
+            AffectsNeutral = sec.GetBool("AffectsNeutral", true);
+            PsychicDamage = sec.GetBool("PsychicDamage");
+            InfDeath = sec.GetInt("InfDeath", 0);
+            Deform = sec.GetDouble("Deform", 0.0);
+            DeformThreshold = sec.GetInt("DeformThreshhold", 0);
+            DeformDepth = sec.GetInt("DeformDepth", 1);
+            DeformRadius = sec.GetInt("DeformRadius", 0);
+            Bullets = sec.GetBool("Bullets");
+            Veinhole = sec.GetBool("Veinhole");
+            ShakeXlo = sec.GetInt("ShakeXlo", 0);
+            ShakeXhi = sec.GetInt("ShakeXhi", 0);
+            ShakeYlo = sec.GetInt("ShakeYlo", 0);
+            ShakeYhi = sec.GetInt("ShakeYhi", 0);
+            Rocker = sec.GetBool("Rocker");
+            DirectRocker = sec.GetBool("DirectRocker");
+            Tiberium = sec.GetBool("Tiberium");
+            Bright = sec.GetBool("Bright");
+            CLDisableRed = sec.GetBool("CLDisableRed");
+            CLDisableGreen = sec.GetBool("CLDisableGreen");
+            CLDisableBlue = sec.GetBool("CLDisableBlue");
+            CombatLightSize = sec.GetDouble("CombatLightSize", 0.0);
+            ProneDamage = sec.GetDouble("ProneDamage", 1.0);
+            WallAbsoluteDestroyer = sec.GetBool("WallAbsoluteDestroyer");
+            Temporal = sec.GetBool("Temporal");
+            IsLocomotor = sec.GetBool("IsLocomotor");
+            Locomotor = sec.GetString("Locomotor", string.Empty);
+            Parasite = sec.GetBool("Parasite");
+            Psychedelic = sec.GetBool("Psychedelic");
+            IvanBomb = sec.GetBool("IvanBomb");
+            MindControl = sec.GetBool("MindControl");
+            Poison = sec.GetBool("Poison");
+            Airstrike = sec.GetBool("Airstrike");
+            Radiation = sec.GetBool("Radiation");
+            Culling = sec.GetBool("Culling");
+            Paralyzes = sec.GetInt("Paralyzes", 0);
+            Sonic = sec.GetBool("Sonic");
+            MakesDisguise = sec.GetBool("MakesDisguise");
+            ElectricAssault = sec.GetBool("ElectricAssault");
+            BombDisarm = sec.GetBool("BombDisarm");
+            NukeMaker = sec.GetBool("NukeMaker");
+            AffectsGround = sec.GetBool("AffectsGround", true);
+            AffectsAir = sec.GetBool("AffectsAir", true);
+            EffectsRequireVerses = sec.GetBool("EffectsRequireVerses", true);
+            MinDebris = Math.Max(0, sec.GetInt("MinDebris", 0));
+            MaxDebris = Math.Max(MinDebris, sec.GetInt("MaxDebris", 0));
+        }
+    }
+
     /// <summary>AnimTypeClass（[Animations] 表）。</summary>
     public sealed class AnimTypeClass : TypeClassBase
     {
@@ -662,7 +938,7 @@ namespace Ra2md.World
     public static class TypeTables
     {
         public static bool Built { get; private set; }
-        public static int UnitCount, InfantryCount, AircraftCount, BuildingCount, BulletCount, AnimCount, SuperCount;
+        public static int UnitCount, InfantryCount, AircraftCount, BuildingCount, BulletCount, AnimCount, SuperCount, WeaponCount, WarheadCount;
 
         public static void Build(RulesDatabase rules, ArtDatabase art)
         {
@@ -679,6 +955,7 @@ namespace Ra2md.World
             BuildList(rules, art, "Projectiles", BulletTypeClass.Array, (id, i) => new BulletTypeClass());
             BuildList(rules, art, "Animations", AnimTypeClass.Array, (id, i) => new AnimTypeClass());
             BuildList(rules, art, "SuperWeaponTypes", SuperWeaponTypeClass.Array, (id, i) => new SuperWeaponTypeClass());
+            BuildWeaponAndWarhead(rules);
 
             UnitCount = UnitTypeClass.Array.Count;
             InfantryCount = InfantryTypeClass.Array.Count;
@@ -687,11 +964,87 @@ namespace Ra2md.World
             BulletCount = BulletTypeClass.Array.Count;
             AnimCount = AnimTypeClass.Array.Count;
             SuperCount = SuperWeaponTypeClass.Array.Count;
+            WeaponCount = WeaponTypeClass.Array.Count;
+            WarheadCount = WarheadTypeClass.Array.Count;
             Built = true;
 
             BootLog.Log("[类型表] 单位=" + UnitCount + " 步兵=" + InfantryCount + " 飞机=" + AircraftCount
-                + " 建筑=" + BuildingCount + " 子弹=" + BulletCount + " 特效=" + AnimCount + " 超武=" + SuperCount);
+                + " 建筑=" + BuildingCount + " 子弹=" + BulletCount + " 特效=" + AnimCount + " 超武=" + SuperCount
+                + " 武器=" + WeaponCount + " 弹头=" + WarheadCount);
         }
+
+        private static readonly string[] ListSectionNames =
+        {
+            "VehicleTypes", "InfantryTypes", "AircraftTypes", "BuildingTypes", "Projectiles",
+            "Animations", "SuperWeaponTypes", "ArmorTypes", "VehicleTypes", "InfantryTypes",
+            "WeaponTypes", "Warheads", "Tiberiums", "SmudgeTypes", "TerrainTypes", "OverlayTypes",
+            "ParticleSystems", "Particles", "Locomotors", "Sides", "Countries", "HouseTypes"
+        };
+
+        private static bool IsListSection(string name)
+        {
+            for (var i = 0; i < ListSectionNames.Length; i++)
+                if (string.Equals(ListSectionNames[i], name, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        private static void BuildWeaponAndWarhead(RulesDatabase rules)
+        {
+            WeaponTypeClass.Array.Clear();
+            WarheadTypeClass.Array.Clear();
+            var weapons = new List<WeaponTypeClass>();
+            var warheads = new List<WarheadTypeClass>();
+            var names = rules.AllSectionNames();
+            var wi = 0;
+            var whi = 0;
+            foreach (var name in names)
+            {
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                if (IsListSection(name)) continue;
+                var sec = rules.GetSection(name);
+                if (sec == null) continue;
+                if (IsWarheadSection(sec))
+                {
+                    var wh = new WarheadTypeClass();
+                    wh.LoadFrom(rules, name, whi++);
+                    warheads.Add(wh);
+                }
+                else if (IsWeaponSection(sec))
+                {
+                    var w = new WeaponTypeClass();
+                    w.LoadFrom(rules, name, wi++);
+                    weapons.Add(w);
+                }
+            }
+            WeaponTypeClass.Array.AddRange(weapons);
+            WarheadTypeClass.Array.AddRange(warheads);
+        }
+
+        private static bool HasAny(IniSection sec, params string[] keys)
+        {
+            for (var i = 0; i < keys.Length; i++) if (sec.HasKey(keys[i])) return true;
+            return false;
+        }
+
+        private static bool IsWeaponSection(IniSection sec) => HasAny(sec,
+            "Damage", "Warhead", "Projectile", "ROF", "Burst", "MinimumRange", "Report",
+            "Lobber", "IsRailgun", "IsSonic", "IsLaser", "IsLine", "IsBigLaser", "OmniFire",
+            "CellRangefinding", "FireOnce", "NeverUse", "InfiniteMindControl", "FireWhileMoving",
+            "DrainWeapon", "FireInTransport", "Suicide", "TurboBoost", "Supress", "Charges",
+            "DiskLaser", "IsHouseColor", "IonSensitive", "AreaFire", "IsElectricBolt",
+            "IsAlternateColor", "IsRadBeam", "IsRadEruption", "IsMagBeam", "AssaultAnim",
+            "OccupantAnim", "OpenToppedAnim", "AttachedParticleSystem", "AmbientDamage", "RadLevel");
+
+        private static bool IsWarheadSection(IniSection sec) => HasAny(sec,
+            "Verses", "CellSpread", "CellInset", "PercentAtMax", "InfDeath", "Deform",
+            "DeformThreshhold", "DeformDepth", "DeformRadius", "Wall", "Wood", "Paralyzes",
+            "MindControl", "Radiation", "Sonic", "AffectsAllies", "AffectsEnemies", "AffectsNeutral",
+            "Rocker", "Tiberium", "ProneDamage", "Locomotor", "Parasite", "Psychedelic",
+            "IvanBomb", "Poison", "Airstrike", "Culling", "MakesDisguise", "ElectricAssault",
+            "BombDisarm", "NukeMaker", "EffectsRequireVerses", "MaxDebris", "MinDebris",
+            "Bullets", "Veinhole", "Temporal", "WallAbsoluteDestroyer", "PenetratesBunker",
+            "PsychicDamage", "CombatLightSize", "CLDisableRed", "CLDisableGreen", "CLDisableBlue",
+            "CausesDelayKill", "DelayKillFrames", "ShakeXlo", "ShakeXhi", "ShakeYlo", "ShakeYhi");
 
         private static void BuildList<T>(RulesDatabase rules, ArtDatabase art, string listSection,
             List<T> output, Func<string, int, T> factory) where T : TypeClassBase

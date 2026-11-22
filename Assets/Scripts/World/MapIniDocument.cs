@@ -52,6 +52,54 @@ namespace Ra2md.World
                 System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : defaultValue;
         }
 
+        /// <summary>ReadRange：单元格数 ×256 转 leptons，向零截断；-1 保留当前默认。</summary>
+        public int GetRangeLeptons(string key, int defaultValue = 0)
+        {
+            var text = GetString(key, null);
+            if (string.IsNullOrWhiteSpace(text)) return defaultValue;
+            if (!double.TryParse(text.Trim(), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var cells)) return defaultValue;
+            if (cells == -1.0) return defaultValue;
+            var leptons = cells * 256.0;
+            return (int)Math.Truncate(leptons);
+        }
+
+        /// <summary>ReadSpeed：0..100 钳制后 (v&lt;&lt;8)/100，上限 255；-1 保留当前默认。</summary>
+        public int GetWeaponSpeed(string key, int defaultValue = 0)
+        {
+            var text = GetString(key, null);
+            if (string.IsNullOrWhiteSpace(text)) return defaultValue;
+            if (!int.TryParse(text.Trim(), out var parsed)) return defaultValue;
+            if (parsed == -1) return defaultValue;
+            var capped = Math.Max(0, Math.Min(100, parsed));
+            return Math.Min(255, (capped << 8) / 100);
+        }
+
+        /// <summary>Verses 百分比表：带 % 按 /100，裸数字按小数；缺省返回 null。</summary>
+        public List<double> GetVerses(string key, double fallback)
+        {
+            var text = GetString(key, null);
+            if (string.IsNullOrWhiteSpace(text)) return null;
+            var tokens = MapIniDocument.SplitComma(text);
+            var result = new List<double>(11);
+            for (var i = 0; i < tokens.Length; i++)
+            {
+                var t = tokens[i].Trim();
+                if (t.EndsWith("%"))
+                {
+                    var num = t.Substring(0, t.Length - 1);
+                    result.Add(double.TryParse(num, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var p) ? p / 100.0 : fallback);
+                }
+                else
+                {
+                    result.Add(double.TryParse(t, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var p) ? p : fallback);
+                }
+            }
+            return result;
+        }
+
         public bool HasKey(string key)
         {
             for (int i = 0; i < Entries.Count; i++)

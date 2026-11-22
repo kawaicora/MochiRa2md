@@ -109,16 +109,12 @@ namespace Ra2md.Assets
                     return file;
                 }
 
-                var u = i % gridW;
-                var v = i / gridW;
-
-                // 子图头 [0]X [4]Y 是该子图在**模板坐标系**里的原点；[20]XExtra [24]YExtra 是相对该原点的偏移
-                // （WAE MapView: drawX + XExtra - X、drawY + YExtra - Y）。本格在模板里的屏幕原点 =
-                // ((u-v)*tileW/2, (u+v)*tileH/2)，所以基图相对本格的偏移 = X - 本格原点。
+                // 口径对照参考 tmp_decode.rs：基图菱形恒占 [0,tileW)×[0,tileH)；
+                // extra 图形相对 stored 原点偏移 = rawExtra - stored。包围盒取基图矩形 ∪ extra 矩形，
+                // 不再按模板格原点折算 stored_x/stored_y（老算法对非零 stored 坐标会把锚点整体推偏，
+                // 正是悬崖/水岸边缘错位三角的来源）。
                 var subX = ReadInt32(data, offset);
                 var subY = ReadInt32(data, offset + 4);
-                var baseX = subX - (u - v) * tileW / 2;
-                var baseY = subY - (u + v) * tileH / 2;
                 var extraX = ReadInt32(data, offset + 20) - subX;
                 var extraY = ReadInt32(data, offset + 24) - subY;
                 var extraW = (int)ReadUInt32(data, offset + 28);
@@ -127,17 +123,10 @@ namespace Ra2md.Assets
                 var hasExtra = (flags & 0x01) != 0 && extraW > 0 && extraH > 0;
 
                 // 包围盒 = 基图格矩形 ∪ extra 矩形
-                var minX = baseX;
-                var minY = baseY;
-                var maxX = baseX + tileW;
-                var maxY = baseY + tileH;
-                if (hasExtra)
-                {
-                    if (extraX < minX) minX = extraX;
-                    if (extraY < minY) minY = extraY;
-                    if (extraX + extraW > maxX) maxX = extraX + extraW;
-                    if (extraY + extraH > maxY) maxY = extraY + extraH;
-                }
+                var minX = hasExtra ? Math.Min(0, extraX) : 0;
+                var minY = hasExtra ? Math.Min(0, extraY) : 0;
+                var maxX = hasExtra ? Math.Max(tileW, extraX + extraW) : tileW;
+                var maxY = hasExtra ? Math.Max(tileH, extraY + extraH) : tileH;
 
                 var boundsW = maxX - minX;
                 var boundsH = maxY - minY;

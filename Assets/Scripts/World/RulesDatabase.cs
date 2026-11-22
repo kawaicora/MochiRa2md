@@ -962,6 +962,34 @@ namespace Ra2md.World
         }
     }
 
+    /// <summary>TiberiumTypeClass（[Tiberiums] 表，参考 rules/tiberium_type.rs）。</summary>
+    public sealed class TiberiumTypeClass : TypeClassBase
+    {
+        public static readonly List<TiberiumTypeClass> Array = new List<TiberiumTypeClass>();
+        public int Value;
+        public int Power;
+        public int Growth;
+        public double GrowthPercentage = 0.1;
+        public int Spread;
+        public double SpreadPercentage = 0.1;
+        public int Image = -1;
+        public static TiberiumTypeClass Find(string id) => TypeTables.Find(Array, id);
+
+        public override void LoadFrom(RulesDatabase rules, string id, int index)
+        {
+            base.LoadFrom(rules, id, index);
+            var sec = rules.GetSection(id);
+            if (sec == null) return;
+            Value = sec.GetInt("Value", 0);
+            Power = sec.GetInt("Power", 0);
+            Growth = sec.GetInt("Growth", 0);
+            GrowthPercentage = sec.GetDouble("GrowthPercentage", 0.1);
+            Spread = sec.GetInt("Spread", 0);
+            SpreadPercentage = sec.GetDouble("SpreadPercentage", 0.1);
+            Image = sec.GetInt("Image", -1);
+        }
+    }
+
     /// <summary>AnimTypeClass（[Animations] 表）。</summary>
     public sealed class AnimTypeClass : TypeClassBase
     {
@@ -1012,10 +1040,11 @@ namespace Ra2md.World
 
         public static int IndexOf(string name)
         {
-            if (string.IsNullOrEmpty(name)) return -1;
+            if (string.IsNullOrEmpty(name)) return 0;
             for (var i = 0; i < Array.Count; i++)
                 if (string.Equals(Array[i], name.Trim(), StringComparison.OrdinalIgnoreCase)) return i;
-            return -1;
+            // 参考口径：未知装甲名回落 none（索引 0）。
+            return 0;
         }
     }
 
@@ -1059,7 +1088,7 @@ namespace Ra2md.World
     public static class TypeTables
     {
         public static bool Built { get; private set; }
-        public static int UnitCount, InfantryCount, AircraftCount, BuildingCount, BulletCount, AnimCount, SuperCount, WeaponCount, WarheadCount;
+        public static int UnitCount, InfantryCount, AircraftCount, BuildingCount, BulletCount, AnimCount, SuperCount, WeaponCount, WarheadCount, TiberiumCount;
 
         public static void Build(RulesDatabase rules, ArtDatabase art)
         {
@@ -1077,6 +1106,7 @@ namespace Ra2md.World
             BuildList(rules, art, "Projectiles", BulletTypeClass.Array, (id, i) => new BulletTypeClass());
             BuildList(rules, art, "Animations", AnimTypeClass.Array, (id, i) => new AnimTypeClass());
             BuildList(rules, art, "SuperWeaponTypes", SuperWeaponTypeClass.Array, (id, i) => new SuperWeaponTypeClass());
+            BuildList(rules, art, "Tiberiums", TiberiumTypeClass.Array, (id, i) => new TiberiumTypeClass());
             BuildWeaponAndWarhead(rules);
 
             UnitCount = UnitTypeClass.Array.Count;
@@ -1088,11 +1118,12 @@ namespace Ra2md.World
             SuperCount = SuperWeaponTypeClass.Array.Count;
             WeaponCount = WeaponTypeClass.Array.Count;
             WarheadCount = WarheadTypeClass.Array.Count;
+            TiberiumCount = TiberiumTypeClass.Array.Count;
             Built = true;
 
             BootLog.Log("[类型表] 单位=" + UnitCount + " 步兵=" + InfantryCount + " 飞机=" + AircraftCount
                 + " 建筑=" + BuildingCount + " 子弹=" + BulletCount + " 特效=" + AnimCount + " 超武=" + SuperCount
-                + " 武器=" + WeaponCount + " 弹头=" + WarheadCount);
+                + " 武器=" + WeaponCount + " 弹头=" + WarheadCount + " 矿石=" + TiberiumCount);
         }
 
         private static readonly string[] ListSectionNames =

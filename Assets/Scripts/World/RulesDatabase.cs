@@ -591,15 +591,58 @@ namespace Ra2md.World
         }
     }
 
-    /// <summary>BulletTypeClass（[Projectiles] 表）。字段是子弹类型自己的，不含 Techno 属性。</summary>
+    /// <summary>BulletTypeClass（[Projectiles] 表，参考 rules/projectile_type.rs）。</summary>
     public sealed class BulletTypeClass : TypeClassBase
     {
         public static readonly List<BulletTypeClass> Array = new List<BulletTypeClass>();
         public string Image;
         public bool Inviso;
-        public int Arcing;
+        public bool Arcing;
         public int Anim;
         public string AnimName;
+        // 瞄准
+        public bool AA;
+        public bool AG = true;
+        public int ROT;
+        public bool Inaccurate;
+        // 飞行行为标志
+        public bool Airburst;
+        public bool Floater;
+        public bool SubjectToCliffs;
+        public bool SubjectToElevation;
+        public bool SubjectToWalls;
+        public bool VeryHigh;
+        public bool Shadow = true;
+        public bool Dropping;
+        public bool Level;
+        public bool Proximity;
+        public bool Ranged;
+        public bool Rotates = true;
+        public bool FlakScatter;
+        public bool Degenerates;
+        public bool Bouncy;
+        public bool AnimPalette;
+        public bool FirersPalette;
+        public bool Scalable;
+        public bool Vertical;
+        public bool Flat;
+        // 整数/浮点
+        public int Cluster = 1;
+        public int ShrapnelCount;
+        public int DetonationAltitude;
+        public int Acceleration = 3;
+        public int CourseLockDuration;
+        public int SpawnDelay = 3;
+        public int Arm;
+        public int AnimLow;
+        public int AnimHigh;
+        public int AnimRate;
+        public double Elasticity = 0.75;
+        public string Trailer;
+        public string ShrapnelWeapon;
+        public string AirburstWeapon;
+        public bool UseLineTrail;
+        public int LineTrailColorDecrement;
         public static BulletTypeClass Find(string id) => TypeTables.Find(Array, id);
 
         public override void LoadFrom(RulesDatabase rules, string id, int index)
@@ -609,9 +652,49 @@ namespace Ra2md.World
             if (sec == null) return;
             Image = sec.GetString("Image", string.Empty);
             Inviso = sec.GetBool("Inviso");
-            Arcing = sec.GetInt("Arcing", 0);
+            Arcing = sec.GetBool("Arcing");
             AnimName = sec.GetString("Anim", string.Empty);
             Anim = sec.GetInt("Anim", 0);
+            AA = sec.GetBool("AA");
+            AG = sec.GetBool("AG", true);
+            ROT = sec.GetInt("ROT", 0);
+            Inaccurate = sec.GetBool("Inaccurate");
+            Airburst = sec.GetBool("Airburst");
+            Floater = sec.GetBool("Floater");
+            SubjectToCliffs = sec.GetBool("SubjectToCliffs");
+            SubjectToElevation = sec.GetBool("SubjectToElevation");
+            SubjectToWalls = sec.GetBool("SubjectToWalls");
+            VeryHigh = sec.GetBool("VeryHigh");
+            Shadow = sec.GetBool("Shadow", true);
+            Dropping = sec.GetBool("Dropping");
+            Level = sec.GetBool("Level");
+            Proximity = sec.GetBool("Proximity");
+            Ranged = sec.GetBool("Ranged");
+            Rotates = sec.GetBool("Rotates", true);
+            FlakScatter = sec.GetBool("FlakScatter");
+            Degenerates = sec.GetBool("Degenerates");
+            Bouncy = sec.GetBool("Bouncy");
+            AnimPalette = sec.GetBool("AnimPalette");
+            FirersPalette = sec.GetBool("FirersPalette");
+            Scalable = sec.GetBool("Scalable");
+            Vertical = sec.GetBool("Vertical");
+            Flat = sec.GetBool("Flat");
+            Cluster = sec.GetInt("Cluster", 1);
+            ShrapnelCount = sec.GetInt("ShrapnelCount", 0);
+            DetonationAltitude = sec.GetInt("DetonationAltitude", 0);
+            Acceleration = sec.GetInt("Acceleration", 3);
+            CourseLockDuration = sec.GetInt("CourseLockDuration", 0);
+            SpawnDelay = sec.GetInt("SpawnDelay", 3);
+            Arm = sec.GetInt("Arm", 0);
+            AnimLow = sec.GetInt("AnimLow", 0);
+            AnimHigh = sec.GetInt("AnimHigh", 0);
+            AnimRate = sec.GetInt("AnimRate", 0);
+            Elasticity = sec.GetDouble("Elasticity", 0.75);
+            Trailer = sec.GetString("Trailer", string.Empty);
+            ShrapnelWeapon = sec.GetString("ShrapnelWeapon", string.Empty);
+            AirburstWeapon = sec.GetString("AirburstWeapon", string.Empty);
+            UseLineTrail = sec.GetBool("UseLineTrail");
+            LineTrailColorDecrement = sec.GetInt("LineTrailColorDecrement", 0);
         }
     }
 

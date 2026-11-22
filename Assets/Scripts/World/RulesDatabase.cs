@@ -343,8 +343,60 @@ namespace Ra2md.World
         public bool CrateGoodie;
         public bool HasTurret;          // rules 的 Turret=yes（SHP 身体 SHP 末尾带炮塔环）
 
-        // 每个类型持有“本类型所有实例”的数组（用户要求：类型对象自己存自己那批单位）。
-        // 放这层会与 TypeClassBase 重复，故只保留基类那一份。
+        // ---- 以下字段按参考 object_type reader 口径补齐（默认值与参考一致）----
+        public string BuildCat;
+        public int BuildLimit = int.MaxValue;
+        public bool Adjacent;
+        public int AdjacentCount = 3;
+        public bool ProtectWithWall;
+        public bool WantsExtraSpace;
+        public bool Bib;
+        public bool Gate;
+        public int Storage;
+        public bool Repairable = true;
+        public bool Capturable;
+        public bool Deployer;
+        public bool Harvester;
+        public bool Refinery;
+        public bool Radar;
+        public bool GapGenerator;
+        public bool SpySat;
+        public bool NukeSilo;
+        public string SuperWeapon;
+        public int Ammo = -1;
+        public int Reload;
+        public string Locomotor;
+        public string MovementZone;
+        public int FlightLevel = -1;
+        public int WalkRate = 1;
+        public int IdleRate;
+        public int ThreatPosed;
+        public int LeadershipRating = 5;
+        public bool Trainable = true;
+        public bool AIBuildThis;
+        public bool AllowedToStartInMultiplayer = true;
+        public bool IsBaseDefense;
+        public bool ConstructionYard;
+        public bool AirportBound;
+        public bool Fighter;
+        public bool Landable;
+        public bool JumpJet;
+        public bool ResourceGatherer;
+        public bool ResourceDestination;
+        public bool Crushable;
+        public bool ConsideredAircraft;
+        public bool HoverAttack;
+        public bool BalloonHover;
+        public bool Teleporter;
+        public string ShieldType;
+        public int Soylent;
+        public bool DontScore;
+        public int DeployFacing;
+        public bool Spawned;
+        public bool Cloning;
+        public bool IsTrain;
+        public bool IsDropship;
+        public bool IsSimpleDeployer;
 
         public override void LoadFrom(RulesDatabase rules, string id, int index)
         {
@@ -369,6 +421,59 @@ namespace Ra2md.World
             Crusher = sec.GetBool("Crusher");
             CrateGoodie = sec.GetBool("CrateGoodie");
             HasTurret = sec.GetBool("Turret", false);
+
+            BuildCat = sec.GetString("BuildCat", string.Empty);
+            BuildLimit = sec.GetInt("BuildLimit", int.MaxValue);
+            AdjacentCount = sec.GetInt("Adjacent", 3);
+            ProtectWithWall = sec.GetBool("ProtectWithWall");
+            WantsExtraSpace = sec.GetBool("WantsExtraSpace");
+            Bib = sec.GetBool("Bib");
+            Gate = sec.GetBool("Gate");
+            Storage = sec.GetInt("Storage", 0);
+            Repairable = sec.GetBool("Repairable", true);
+            Capturable = sec.GetBool("Capturable");
+            Deployer = sec.GetBool("Deployer");
+            Harvester = sec.GetBool("Harvester");
+            Refinery = sec.GetBool("Refinery");
+            Radar = sec.GetBool("Radar");
+            GapGenerator = sec.GetBool("GapGenerator");
+            SpySat = sec.GetBool("SpySat");
+            NukeSilo = sec.GetBool("NukeSilo");
+            SuperWeapon = sec.GetString("SuperWeapon", string.Empty);
+            Ammo = sec.GetInt("Ammo", -1);
+            Reload = sec.GetInt("Reload", 0);
+            Locomotor = sec.GetString("Locomotor", string.Empty);
+            MovementZone = sec.GetString("MovementZone", string.Empty);
+            FlightLevel = sec.GetInt("FlightLevel", -1);
+            WalkRate = sec.GetInt("WalkRate", 1);
+            IdleRate = sec.GetInt("IdleRate", 0);
+            ThreatPosed = sec.GetInt("ThreatPosed", 0);
+            LeadershipRating = sec.GetInt("LeadershipRating", 5);
+            Trainable = sec.GetBool("Trainable", Category != "Building");
+            AIBuildThis = sec.GetBool("AIBuildThis");
+            AllowedToStartInMultiplayer = sec.GetBool("AllowedToStartInMultiplayer", true);
+            IsBaseDefense = sec.GetBool("IsBaseDefense");
+            ConstructionYard = sec.GetBool("ConstructionYard");
+            AirportBound = sec.GetBool("AirportBound");
+            Fighter = sec.GetBool("Fighter");
+            Landable = sec.GetBool("Landable");
+            JumpJet = sec.GetBool("JumpJet");
+            ResourceGatherer = sec.GetBool("ResourceGatherer");
+            ResourceDestination = sec.GetBool("ResourceDestination");
+            Crushable = sec.GetBool("Crushable", Category == "Infantry");
+            ConsideredAircraft = sec.GetBool("ConsideredAircraft", Category == "Aircraft");
+            HoverAttack = sec.GetBool("HoverAttack");
+            BalloonHover = sec.GetBool("BalloonHover");
+            Teleporter = sec.GetBool("Teleporter");
+            ShieldType = sec.GetString("ShieldType", string.Empty);
+            Soylent = sec.GetInt("Soylent", 0);
+            DontScore = sec.GetBool("DontScore");
+            DeployFacing = sec.GetInt("DeployFacing", 4);
+            Spawned = sec.GetBool("Spawned");
+            Cloning = sec.GetBool("Cloning");
+            IsTrain = sec.GetBool("IsTrain");
+            IsDropship = sec.GetBool("IsDropship");
+            IsSimpleDeployer = sec.GetBool("IsSimpleDeployer");
         }
 
         /// <summary>Owner 列表是否含该国家（空 Owner = 谁都能造）。</summary>

@@ -44,6 +44,14 @@ namespace Ra2md.World
             return IsOneValue(text);
         }
 
+        public double GetDouble(string key, double defaultValue = 0.0)
+        {
+            var text = GetString(key, null);
+            if (string.IsNullOrWhiteSpace(text)) return defaultValue;
+            return double.TryParse(text.Trim(), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : defaultValue;
+        }
+
         public bool HasKey(string key)
         {
             for (int i = 0; i < Entries.Count; i++)

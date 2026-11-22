@@ -515,6 +515,29 @@ namespace Ra2md.World
         public bool BaseNormal;
         public bool Unsellable;
         public bool WallOwner;
+        // ---- 建筑专属字段（按参考 reader 口径）----
+        public bool Powered;
+        public bool PoweredSpecial;
+        public bool TogglePower = true;
+        public bool LeaveRubble;
+        public bool CanBeOccupied;
+        public bool BridgeRepairHut;
+        public bool FirestormWall;
+        public bool Spyable;
+        public bool UnitRepair;
+        public bool ClickRepairable = true;
+        public bool HoverPad;
+        public bool IsTemple;
+        public bool IsPlug;
+        public int AntiAirValue;
+        public int AntiArmorValue;
+        public int AntiInfantryValue;
+        public bool WeaponsFactory;
+        public bool EligibileForAllyBuilding;
+        public bool CanC4 = true;
+        public double GateCloseDelay;
+        public bool SuperWeaponPerBuilding;
+        public bool CrateBeneath;
         public static BuildingTypeClass Find(string id) => TypeTables.Find(Array, id);
         public static BuildingTypeClass FindByIndex(int i) => TypeTables.FindByIndex(Array, i);
 
@@ -526,9 +549,31 @@ namespace Ra2md.World
             var power = sec.GetInt("Power", 0);
             if (power < 0) { PowerDrain = -power; Power = 0; }
             else { Power = power; PowerDrain = 0; }
-            BaseNormal = sec.GetBool("BaseNormal");
+            BaseNormal = sec.GetBool("BaseNormal", true);
             Unsellable = sec.GetBool("Unsellable");
             WallOwner = sec.GetBool("WallOwner");
+            Powered = sec.GetBool("Powered");
+            PoweredSpecial = sec.GetBool("PoweredSpecial");
+            TogglePower = sec.GetBool("TogglePower", true);
+            LeaveRubble = sec.GetBool("LeaveRubble");
+            CanBeOccupied = sec.GetBool("CanBeOccupied");
+            BridgeRepairHut = sec.GetBool("BridgeRepairHut");
+            FirestormWall = sec.GetBool("FirestormWall");
+            Spyable = sec.GetBool("Spyable");
+            UnitRepair = sec.GetBool("UnitRepair");
+            ClickRepairable = sec.GetBool("ClickRepairable", true);
+            HoverPad = sec.GetBool("HoverPad");
+            IsTemple = sec.GetBool("IsTemple");
+            IsPlug = sec.GetBool("IsPlug");
+            AntiAirValue = sec.GetInt("AntiAirValue", 0);
+            AntiArmorValue = sec.GetInt("AntiArmorValue", 0);
+            AntiInfantryValue = sec.GetInt("AntiInfantryValue", 0);
+            WeaponsFactory = sec.GetBool("WeaponsFactory");
+            EligibileForAllyBuilding = sec.GetBool("EligibileForAllyBuilding");
+            CanC4 = sec.GetBool("CanC4", true);
+            GateCloseDelay = sec.GetDouble("GateCloseDelay", 0.0);
+            SuperWeaponPerBuilding = sec.GetBool("SuperWeaponPerBuilding");
+            CrateBeneath = sec.GetBool("CrateBeneath");
         }
     }
 

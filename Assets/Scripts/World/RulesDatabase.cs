@@ -382,6 +382,9 @@ namespace Ra2md.World
         public int Reload;
         public string Locomotor;
         public string MovementZone;
+        public LocomotorKind LocomotorKind;
+        public SpeedType SpeedType;
+        public MovementZone MovementZoneKind;
         public int FlightLevel = -1;
         public int WalkRate = 1;
         public int IdleRate;
@@ -460,6 +463,9 @@ namespace Ra2md.World
             Reload = sec.GetInt("Reload", 0);
             Locomotor = sec.GetString("Locomotor", string.Empty);
             MovementZone = sec.GetString("MovementZone", string.Empty);
+            LocomotorKind = LocomotorTypes.KindFromClsid(Locomotor);
+            SpeedType = LocomotorTypes.SpeedTypeFromIni(sec.GetString("SpeedType", string.Empty));
+            MovementZoneKind = LocomotorTypes.MovementZoneFromIni(MovementZone);
             FlightLevel = sec.GetInt("FlightLevel", -1);
             WalkRate = sec.GetInt("WalkRate", 1);
             IdleRate = sec.GetInt("IdleRate", 0);
@@ -1045,6 +1051,83 @@ namespace Ra2md.World
                 if (string.Equals(Array[i], name.Trim(), StringComparison.OrdinalIgnoreCase)) return i;
             // 参考口径：未知装甲名回落 none（索引 0）。
             return 0;
+        }
+    }
+
+    /// <summary>移动控制器类别（参考 locomotor_type.rs LocomotorKind，按 CLSID 解析）。</summary>
+    public enum LocomotorKind { Drive, Hover, Walk, Fly, Teleport, Ship, Jumpjet, Rocket, Tunnel, Mech }
+
+    /// <summary>地形通行类型（参考 SpeedType 枚举）。</summary>
+    public enum SpeedType { Invalid = -1, Foot = 0, Track, Wheel, Hover, Winged, Float, Amphibious, FloatBeach }
+
+    /// <summary>寻路区域（参考 MovementZone 枚举，数值即通行矩阵行号）。</summary>
+    public enum MovementZone { Invalid = -1, Normal = 0, Crusher, Destroyer, AmphibiousDestroyer, AmphibiousCrusher, Amphibious, Subterranean, Infantry, InfantryDestroyer, Fly, Water, WaterBeach, CrusherAll }
+
+    public static class LocomotorTypes
+    {
+        private static readonly string[] Clsids =
+        {
+            "{4A582741-9839-11D1-B709-00A024DDAFD1}", // Drive
+            "{4A582742-9839-11D1-B709-00A024DDAFD1}", // Hover
+            "{4A582744-9839-11D1-B709-00A024DDAFD1}", // Walk
+            "{4A582746-9839-11D1-B709-00A024DDAFD1}", // Fly
+            "{4A582747-9839-11D1-B709-00A024DDAFD1}", // Teleport
+            "{2BEA74E1-7CCA-11D3-BE14-00104B62A16C}", // Ship
+            "{92612C46-F71F-11D1-AC9F-006008055BB5}", // Jumpjet
+            "{B7B49766-E576-11D3-9BD9-00104B972FE8}", // Rocket
+            "{4A582743-9839-11D1-B709-00A024DDAFD1}", // Tunnel
+            "{55D141B8-DB94-11D1-AC98-006008055BB5}", // Mech
+        };
+
+        public static LocomotorKind KindFromClsid(string text)
+        {
+            var normalized = (text ?? string.Empty).Trim();
+            if (normalized.StartsWith("{")) normalized = normalized.TrimStart('{').TrimEnd('}');
+            for (var i = 0; i < Clsids.Length; i++)
+            {
+                var body = Clsids[i].Substring(1, Clsids[i].Length - 2);
+                if (string.Equals(body, normalized, StringComparison.OrdinalIgnoreCase))
+                    return (LocomotorKind)i;
+            }
+            return LocomotorKind.Drive;
+        }
+
+        public static SpeedType SpeedTypeFromIni(string value)
+        {
+            switch ((value ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                case "foot": return SpeedType.Foot;
+                case "track": return SpeedType.Track;
+                case "wheel": return SpeedType.Wheel;
+                case "float": return SpeedType.Float;
+                case "amphibious": return SpeedType.Amphibious;
+                case "winged": return SpeedType.Winged;
+                case "floatbeach": return SpeedType.FloatBeach;
+                case "hover": return SpeedType.Hover;
+                default: return SpeedType.Invalid;
+            }
+        }
+
+        public static MovementZone MovementZoneFromIni(string value)
+        {
+            switch ((value ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                case "normal": return MovementZone.Normal;
+                case "crusher": return MovementZone.Crusher;
+                case "destroyer": return MovementZone.Destroyer;
+                case "amphibiousdestroyer": return MovementZone.AmphibiousDestroyer;
+                case "amphibiouscrusher": return MovementZone.AmphibiousCrusher;
+                case "amphibious": return MovementZone.Amphibious;
+                case "subterannean":
+                case "subterranean": return MovementZone.Subterranean;
+                case "infantry": return MovementZone.Infantry;
+                case "infantrydestroyer": return MovementZone.InfantryDestroyer;
+                case "fly": return MovementZone.Fly;
+                case "water": return MovementZone.Water;
+                case "waterbeach": return MovementZone.WaterBeach;
+                case "crusherall": return MovementZone.CrusherAll;
+                default: return MovementZone.Invalid;
+            }
         }
     }
 

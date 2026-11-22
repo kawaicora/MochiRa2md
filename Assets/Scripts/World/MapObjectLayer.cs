@@ -59,12 +59,22 @@ namespace Ra2md.World
         public bool RequiresPower = true;   // <Key>Powered=no 时停电也不停
         public bool PoweredSpecial;        // <Key>PoweredSpecial=yes：停电时隐藏，由 LowPower 槽接替
 
+        // ---- SHP 身体条带（待机/行走/开火 × 朝向）；体素身体不挂 ----
+        public BodySequence Body;
+        public BodyAction Action;
+        public int CycleFrame;
+        public float CycleTimer;
+        public int LastCellX;
+        public int LastCellY;
+        public byte FacingByte;
+
         [NonSerialized] public RectTransform Rect;
         [NonSerialized] public Image Image;
         [NonSerialized] public int DepthKey;
         // 视图 ↔ 逻辑对象的绑定（选中/移动/展开时直接改位置，不重建）
         [NonSerialized] public UnitClass BoundUnit;
         [NonSerialized] public BuildingClass BoundBuilding;
+        [NonSerialized] public TechnoObjectClass BoundTechno;
         [NonSerialized] private RectTransform _selectionFrame;
 
         public bool Selected { get; private set; }
@@ -413,7 +423,17 @@ namespace Ra2md.World
                 entity.Owner != null ? entity.Owner.ColorB : 0,
                 false, voxel, 0);
             if (view == null) return null;
+            view.BoundTechno = entity;
 
+            // SHP 身体走条带布局（待机/行走/开火 × 朝向）；体素身体不挂条带。
+            if (!voxel)
+            {
+                view.Body = BodySequence.FromArt(entity.Type.Art, entity.Type.HasTurret);
+                view.LastCellX = entity.CellX;
+                view.LastCellY = entity.CellY;
+                view.Action = BodyAction.Stand;
+                view.FrameIndex = view.Body.ResolveFrame(view.Action, view.FacingByte, 0);
+            }
             AttachBodyAnim(view, entity.Type.Art);
             _dirtySort = true;
             Sort();
@@ -640,6 +660,66 @@ namespace Ra2md.World
             return paused;
         }
 
+        /// <summary>方向八等分索引：0=N,1=NE,2=E,3=SE,4=S,5=SW,6=W,7=NW（与参考方向表一致）。</summary>
+        private static int DirFromDelta(int dx, int dy)
+        {
+            if (dx == 0 && dy < 0) return 0;
+            if (dx > 0 && dy < 0) return 1;
+            if (dx > 0 && dy == 0) return 2;
+            if (dx > 0 && dy > 0) return 3;
+            if (dx == 0 && dy > 0) return 4;
+            if (dx < 0 && dy > 0) return 5;
+            if (dx < 0 && dy == 0) return 6;
+            return 7;
+        }
+
+        /// <summary>SHP 身体条带：按移动状态切待机/行走，按朝向取帧，行走循环推进条带内帧。</summary>
+        private void UpdateBody(MapObjectView view, float dt)
+        {
+            var e = view.BoundTechno;
+            if (e == null || view.Body == null) return;
+
+            var moving = e.CellX != view.LastCellX || e.CellY != view.LastCellY;
+            if (moving)
+            {
+                var dx = e.CellX - view.LastCellX;
+                var dy = e.CellY - view.LastCellY;
+                view.FacingByte = (byte)(DirFromDelta(dx, dy) * 32);
+                view.LastCellX = e.CellX;
+                view.LastCellY = e.CellY;
+                if (view.Action != BodyAction.Walk) { view.Action = BodyAction.Walk; view.CycleFrame = 0; view.CycleTimer = 0f; }
+            }
+            else if (view.Action == BodyAction.Walk)
+            {
+                view.Action = BodyAction.Stand;
+                view.CycleFrame = 0;
+            }
+
+            if (view.Action == BodyAction.Walk && view.Body.WalkFrames > 0)
+            {
+                view.CycleTimer += dt * 1000f;
+                const float walkStepMs = 120f;
+                while (view.CycleTimer >= walkStepMs)
+                {
+                    view.CycleTimer -= walkStepMs;
+                    view.CycleFrame++;
+                }
+            }
+
+            var frame = view.Body.ResolveFrame(view.Action, view.FacingByte, view.CycleFrame);
+            if (frame == view.FrameIndex) return;
+
+            var palette = ResolvePalette(view.Kind, view.TypeName, view.ColorR, view.ColorG, view.ColorB);
+            var sprite = LoadSprite(view.ImageName, frame,
+                (view.Kind ?? string.Empty) + ":" + (view.TypeName ?? string.Empty),
+                palette, out var w, out var h, out _,
+                view.ColorR, view.ColorG, view.ColorB);
+            if (sprite == null) return;
+            view.FrameIndex = frame;
+            view.Image.sprite = sprite;
+            view.Rect.sizeDelta = new Vector2(w, h);
+        }
+
         private void AdvanceAnim(MapObjectView view, float dt)
         {
             if (view.Anim == null || !view.Anim.Active) return;
@@ -694,6 +774,7 @@ namespace Ra2md.World
                 view.Rect.anchoredPosition = new Vector2(canvasX + view.AnchorOffsetX,
                     anchorY + view.YAdjust - view.AnchorOffsetY);
                 var paused = RefreshBuildingPart(view);
+                UpdateBody(view, dt);
                 if (!paused && view.Anim != null && view.Anim.Active) AdvanceAnim(view, dt);
             }
         }

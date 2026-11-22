@@ -199,6 +199,14 @@ namespace Ra2md.World
         public int AnimLoopCount = -1; // -1 = 无限循环；>=0 = 播完指定次数后停在末帧
         public int AnimRateMs;
         public bool AnimPingPong;      // PingPong=yes：到头反向回放（不是回到首帧）
+        // ---- SHP 身体帧布局（待机 / 行走 / 开火条带，8 朝向）----
+        public int Facings = 8;
+        public int WalkFrames = 12;
+        public int FiringFrames;
+        public int StandingFrames;
+        public int StartWalkFrame = -1;
+        public int StartStandFrame = -1;
+        public int StartFiringFrame = -1;
         public readonly List<string> Extra = new List<string>();
 
         public string ResolvedImage(string typeId)
@@ -260,6 +268,13 @@ namespace Ra2md.World
                 AnimLoopCount = sec.GetInt("LoopCount", -1),
                 AnimRateMs = sec.GetInt("Rate", 0),
                 AnimPingPong = sec.GetBool("PingPong", false),
+                Facings = sec.GetInt("Facings", 8),
+                WalkFrames = sec.GetInt("WalkFrames", 12),
+                FiringFrames = sec.GetInt("FiringFrames", 0),
+                StandingFrames = sec.GetInt("StandingFrames", sec.GetInt("FiringFrames", 0) > 0 ? 1 : 0),
+                StartWalkFrame = sec.GetInt("StartWalkFrame", -1),
+                StartStandFrame = sec.GetInt("StartStandFrame", -1),
+                StartFiringFrame = sec.GetInt("StartFiringFrame", -1),
                 Raw = sec,
             };
         }
@@ -326,6 +341,7 @@ namespace Ra2md.World
         public bool Crewed;
         public bool Crusher;
         public bool CrateGoodie;
+        public bool HasTurret;          // rules 的 Turret=yes（SHP 身体 SHP 末尾带炮塔环）
 
         // 每个类型持有“本类型所有实例”的数组（用户要求：类型对象自己存自己那批单位）。
         // 放这层会与 TypeClassBase 重复，故只保留基类那一份。
@@ -352,6 +368,7 @@ namespace Ra2md.World
             Crewed = sec.GetBool("Crewed");
             Crusher = sec.GetBool("Crusher");
             CrateGoodie = sec.GetBool("CrateGoodie");
+            HasTurret = sec.GetBool("Turret", false);
         }
 
         /// <summary>Owner 列表是否含该国家（空 Owner = 谁都能造）。</summary>

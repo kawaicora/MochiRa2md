@@ -178,6 +178,7 @@ namespace Ra2md.World
         public int Build(SkirmishMatch match)
         {
             Clear();
+            _imageErrors.Clear();
             if (match == null) return 0;
             _terrain = match.Terrain;
 
@@ -262,7 +263,12 @@ namespace Ra2md.World
 
             _dirtySort = true;
             Sort();
-            Status = $"对象 overlay={overlays} 地形={terrains} 单位建筑={things} 失败={failed} · " + (note ?? string.Empty);
+
+            var detail = new System.Text.StringBuilder();
+            foreach (var kv in _imageErrors)
+                detail.Append(" | ").Append(kv.Key).Append(" => ").Append(kv.Value);
+            Status = $"对象 overlay={overlays} 地形={terrains} 单位建筑={things} 失败={failed} · "
+                + (note ?? string.Empty) + detail;
             BootLog.Log("[对象层] " + Status);
             return _views.Count;
         }
@@ -612,7 +618,6 @@ namespace Ra2md.World
             }
             if (_imageErrors.ContainsKey(key)) return null;
 
-            if (palette == null)
             if (palette == null)
             {
                 _imageErrors[key] = "调色板未就绪";

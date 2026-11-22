@@ -49,13 +49,9 @@ namespace Ra2md.World
         public int ColorG;
         public int ColorB;
 
-        // ---- art 动画（ActiveAnim / ActiveAnimTwo / IdleAnim …）----
+        // ---- art 动画（ActiveAnim / ActiveAnimTwo / IdleAnim …），通用 SpriteAnim 驱动 ----
         public string AnimImage;
-        public int AnimStart;
-        public int AnimEnd;
-        public float AnimDelay;         // 每帧秒数（art Rate 毫秒）
-        public float AnimTimer;
-        public bool Animating;
+        public Ra2md.Assets.SpriteAnim Anim;
 
         [NonSerialized] public RectTransform Rect;
         [NonSerialized] public Image Image;
@@ -332,7 +328,6 @@ namespace Ra2md.World
             view.YAdjust = 0;
             view.SortBias = 0;
             view.OrderIndex = _views.Count;
-            view.Animating = false;
             view.ColorR = colorR;
             view.ColorG = colorG;
             view.ColorB = colorB;
@@ -433,19 +428,7 @@ namespace Ra2md.World
                 var animArt = ArtDatabase.Current != null ? ArtDatabase.Current.Get(animId) : null;
                 var image = animArt != null ? animArt.ResolvedImage(animId) : animId;
 
-                var start = 0;
-                var loopStart = 0;
-                var loopEnd = 0;
-                var rate = 0;
-                if (animArt != null && animArt.Raw != null)
-                {
-                    start = animArt.Raw.GetInt("Start", 0);
-                    loopStart = animArt.Raw.GetInt("LoopStart", start);
-                    loopEnd = animArt.Raw.GetInt("LoopEnd", 0);
-                    rate = animArt.Raw.GetInt("Rate", 0);
-                }
-
-                var view = Spawn("building-anim", animId, image, start, cellX, cellY, (_terrain != null ? _terrain.HeightAt(cellX, cellY) : 0));
+                var view = Spawn("building-anim", animId, image, 0, cellX, cellY, (_terrain != null ? _terrain.HeightAt(cellX, cellY) : 0));
                 if (view == null) continue;
 
                 view.SortBias = 1 + spawned;
@@ -453,40 +436,36 @@ namespace Ra2md.World
                 view.AnchorOffsetY = body.AnchorOffsetY;
                 view.DepthKey = body.DepthKey;
                 view.YAdjust = art.Raw.GetInt(key + "ZAdjust", 0);
-                if (loopEnd > loopStart && rate > 0) SetupAnim(view, image, loopStart, loopEnd, rate);
+
+                // 通用动画状态机：常驻部件（Active/Idle/Special/Turret）才进循环；
+                // ProductionAnim 是建造起重机一次性动画，落位后停首帧，不循环闪。
+                var isProduction = lower == "productionanim";
+                if (!isProduction) SetupAnim(view, image, animArt);
                 spawned++;
             }
             return spawned;
         }
 
-        private static void SetupAnim(MapObjectView view, string image, int loopStart, int loopEnd, int rateMs)
+        private static void SetupAnim(MapObjectView view, string image, ArtRecord animArt)
         {
             view.AnimImage = image;
-            view.AnimStart = loopStart;
-            view.AnimEnd = loopEnd;
-            view.FrameIndex = loopStart;
-            view.AnimDelay = rateMs > 0 ? rateMs / 1000f : 0.1f;
-            view.AnimTimer = 0f;
-            view.Animating = true;
+            var anim = Ra2md.Assets.SpriteAnim.FromArt(animArt);
+            view.Anim = anim;
+            view.FrameIndex = anim.Active ? anim.Start : 0;
         }
 
         private void AdvanceAnim(MapObjectView view, float dt)
         {
-            if (!view.Animating || view.AnimEnd <= view.AnimStart) return;
-            view.AnimTimer += dt;
-            if (view.AnimTimer < view.AnimDelay) return;
-            view.AnimTimer -= view.AnimDelay;
-
-            var next = view.FrameIndex + 1;
-            if (next > view.AnimEnd) next = view.AnimStart;
-            if (next == view.FrameIndex) return;
+            if (view.Anim == null || !view.Anim.Active) return;
+            var frame = view.Anim.Step(dt);
+            if (frame < 0 || frame == view.FrameIndex) return;
 
             var palette = ResolvePalette(view.Kind, view.TypeName, view.ColorR, view.ColorG, view.ColorB);
-            var sprite = LoadSprite(view.AnimImage, next, (view.Kind ?? string.Empty) + ":" + (view.TypeName ?? string.Empty),
+            var sprite = LoadSprite(view.AnimImage, frame, (view.Kind ?? string.Empty) + ":" + (view.TypeName ?? string.Empty),
                 palette, out var w, out var h, out _,
                 view.ColorR, view.ColorG, view.ColorB);
-            if (sprite == null) { view.Animating = false; return; }
-            view.FrameIndex = next;
+            if (sprite == null) { view.Anim.Active = false; return; }
+            view.FrameIndex = frame;
             view.Image.sprite = sprite;
             view.Rect.sizeDelta = new Vector2(w, h);
         }
@@ -528,7 +507,7 @@ namespace Ra2md.World
                 anchorY -= view.ImageOffsetY;
                 view.Rect.anchoredPosition = new Vector2(canvasX + view.AnchorOffsetX,
                     anchorY + view.YAdjust - view.AnchorOffsetY);
-                if (view.Animating) AdvanceAnim(view, dt);
+                if (view.Anim != null && view.Anim.Active) AdvanceAnim(view, dt);
             }
         }
 

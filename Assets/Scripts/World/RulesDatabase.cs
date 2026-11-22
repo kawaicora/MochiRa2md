@@ -191,6 +191,13 @@ namespace Ra2md.World
         public bool NewTheater;     // NewTheater=yes → 文件名带剧场后缀
         public int ShadowIndex;
         public string TurretAnim;
+        // ---- 通用动画参数（所有对象共用一套口径，不在各处重复解析）----
+        public int AnimStart;
+        public int AnimLoopStart;
+        public int AnimLoopEnd;
+        public int AnimEndCount;   // End= 是帧数（参考注释：End 不是结束帧号，是序列帧数）
+        public int AnimLoopCount = -1; // -1 = 无限循环；>=0 = 播完指定次数后停在末帧
+        public int AnimRateMs;
         public readonly List<string> Extra = new List<string>();
 
         public string ResolvedImage(string typeId)
@@ -245,6 +252,12 @@ namespace Ra2md.World
                 NewTheater = sec.GetBool("NewTheater", false),
                 ShadowIndex = sec.GetInt("ShadowIndex", 0),
                 TurretAnim = sec.GetString("TurretAnim", string.Empty),
+                AnimStart = sec.GetInt("Start", 0),
+                AnimLoopStart = sec.GetInt("LoopStart", sec.GetInt("Start", 0)),
+                AnimLoopEnd = sec.GetInt("LoopEnd", 0),
+                AnimEndCount = sec.GetInt("End", 0),
+                AnimLoopCount = sec.GetInt("LoopCount", -1),
+                AnimRateMs = sec.GetInt("Rate", 0),
                 Raw = sec,
             };
         }

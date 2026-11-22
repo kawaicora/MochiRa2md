@@ -65,12 +65,7 @@ namespace Ra2md.World
                 if (((Vector2)UnityEngine.Input.mousePosition - _pressPos).sqrMagnitude < 25f)
                     HandleLeftClick(UnityEngine.Input.mousePosition);
             }
-
-            if (UnityEngine.Input.GetMouseButtonDown(1))
-            {
-                if (GameHud.IsPointerOverUI(UnityEngine.Input.mousePosition)) return;
-                IssueMove(UnityEngine.Input.mousePosition);
-            }
+            // 右键留给视口拖动平移；移动指令走左键（选中后点空地）。
         }
 
         /// <summary>左键：点到自己的单位/建筑就选中；已选中单位时点空地 = 下达移动指令。</summary>

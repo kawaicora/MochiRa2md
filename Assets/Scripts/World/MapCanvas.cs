@@ -158,15 +158,21 @@ namespace Ra2md.World
             _pan.y = Mathf.Clamp(_pan.y, loY, hiY);
         }
 
+        private const float EdgeSize = 14f;
+        private const float EdgeSpeed = 900f;
+
         private void Update()
         {
-            // 原版视口拖动：按住鼠标左键（或中键）平移画布；只改 transform，不重画地形。
+            // 原版视口平移三种方式：右键/中键拖动、贴近屏幕边缘推屏、雷达点击对准（HUD 内不推屏）。
             if (_canvas == null) return;
-            var held = UnityEngine.Input.GetMouseButton(0) || UnityEngine.Input.GetMouseButton(2);
+            var mouse = UnityEngine.Input.mousePosition;
+            var overUI = GameHud.IsPointerOverUI(mouse);
+
+            var held = !overUI && (UnityEngine.Input.GetMouseButton(1) || UnityEngine.Input.GetMouseButton(2));
             if (held && !_dragging)
             {
                 _dragging = true;
-                _dragFrom = UnityEngine.Input.mousePosition;
+                _dragFrom = mouse;
             }
             else if (!held && _dragging)
             {
@@ -174,10 +180,25 @@ namespace Ra2md.World
             }
             else if (_dragging)
             {
-                var now = (Vector2)UnityEngine.Input.mousePosition;
+                var now = (Vector2)mouse;
                 _pan += now - _dragFrom;
                 _dragFrom = now;
                 ApplyPan();
+            }
+
+            // 边缘推屏
+            if (!overUI)
+            {
+                var dir = Vector2.zero;
+                if (mouse.x < EdgeSize) dir.x -= 1f;
+                else if (mouse.x > Screen.width - EdgeSize) dir.x += 1f;
+                if (mouse.y < EdgeSize) dir.y -= 1f;
+                else if (mouse.y > Screen.height - EdgeSize) dir.y += 1f;
+                if (dir.sqrMagnitude > 0f)
+                {
+                    _pan += dir.normalized * EdgeSpeed * Time.deltaTime;
+                    ApplyPan();
+                }
             }
         }
     }

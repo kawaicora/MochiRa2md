@@ -441,6 +441,9 @@ namespace Ra2md.World
         public bool ChronoshiftAllow = true;
         public bool ChronoshiftIsVehicle;
         public bool ChronoshiftCrushable = true;
+        public bool ImmuneToPsionics;
+        public int MindControlRingOffset;
+        public string MindClearedSound;
         // ---- 加特林分段表（15 格连续块：0=WeaponStages，1..6=Stage1..6，7..12=EliteStage1..6，13=RateUp，14=RateDown）----
         public bool IsGattling;
         public readonly int[] GattlingBlock = new int[15];
@@ -610,6 +613,9 @@ namespace Ra2md.World
             ChronoshiftAllow = sec.GetBool("Chronoshift.Allow", true);
             ChronoshiftIsVehicle = sec.GetBool("Chronoshift.IsVehicle", false);
             ChronoshiftCrushable = sec.GetBool("Chronoshift.Crushable", true);
+            ImmuneToPsionics = sec.GetBool("ImmuneToPsionics");
+            MindControlRingOffset = sec.GetInt("MindControlRingOffset", MindControlRingOffset);
+            MindClearedSound = sec.GetString("MindClearedSound", MindClearedSound);
             IsGattling = sec.GetBool("IsGattling");
             GattlingBlock[0] = sec.GetInt("WeaponStages", GattlingBlock[0]);
             GattlingBlock[13] = sec.GetInt("RateUp", GattlingBlock[13]);
@@ -1795,6 +1801,67 @@ namespace Ra2md.World
         }
     }
 
+    /// <summary>精神控制全局规则（参考 mind_control_rules.rs：控制环动画、主脑过载表、音效、AI 俘获决策表）。</summary>
+    public static class MindControlRules
+    {
+        public static string ControlledAnim;
+        public static string PermaControlledAnim;
+        public static readonly List<int> OverloadCount = new List<int>();
+        public static readonly List<int> OverloadDamage = new List<int>();
+        public static readonly List<int> OverloadFrames = new List<int>();
+        public static string MindControlSound;
+        public static string MindClearedSound;
+        public static string OverloadSound;
+        public static readonly List<int> AiCaptureLowMoney = new List<int>();
+        public static readonly List<int> AiCaptureLowPower = new List<int>();
+        public static readonly List<int> AiCaptureWounded = new List<int>();
+        public static readonly List<int> AiCaptureNormal = new List<int>();
+        public static int AiCaptureLowMoneyMark;
+        public static double AiCaptureWoundedMark;
+        public static bool MindControlIgnoreSize = true;
+        public static bool MultiMindControlReleaseVictim;
+
+        private static List<int> ReadIntList(IniSection section, string key)
+        {
+            var result = new List<int>();
+            foreach (var token in MapIniDocument.SplitComma(section.GetString(key, string.Empty)))
+                if (int.TryParse(token.Trim(), out var value)) result.Add(value);
+            return result;
+        }
+
+        public static void Load(RulesDatabase rules)
+        {
+            var combat = rules.GetSection("CombatDamage");
+            if (combat != null)
+            {
+                ControlledAnim = combat.GetString("ControlledAnimationType", ControlledAnim);
+                PermaControlledAnim = combat.GetString("PermaControlledAnimationType", PermaControlledAnim);
+                OverloadCount.Clear(); OverloadCount.AddRange(ReadIntList(combat, "OverloadCount"));
+                OverloadDamage.Clear(); OverloadDamage.AddRange(ReadIntList(combat, "OverloadDamage"));
+                OverloadFrames.Clear(); OverloadFrames.AddRange(ReadIntList(combat, "OverloadFrames"));
+            }
+            var audio = rules.GetSection("AudioVisual");
+            if (audio != null)
+            {
+                MindControlSound = audio.GetString("YuriMindControlSound", MindControlSound);
+                MindClearedSound = audio.GetString("MindClearedSound", MindClearedSound);
+                OverloadSound = audio.GetString("MasterMindOverloadDeathSound", OverloadSound);
+            }
+            var general = rules.GetSection("General");
+            if (general != null)
+            {
+                AiCaptureLowMoney.Clear(); AiCaptureLowMoney.AddRange(ReadIntList(general, "AICaptureLowMoney"));
+                AiCaptureLowPower.Clear(); AiCaptureLowPower.AddRange(ReadIntList(general, "AICaptureLowPower"));
+                AiCaptureWounded.Clear(); AiCaptureWounded.AddRange(ReadIntList(general, "AICaptureWounded"));
+                AiCaptureNormal.Clear(); AiCaptureNormal.AddRange(ReadIntList(general, "AICaptureNormal"));
+                AiCaptureLowMoneyMark = general.GetInt("AICaptureLowMoneyMark", AiCaptureLowMoneyMark);
+                AiCaptureWoundedMark = general.GetDouble("AICaptureWoundedMark", AiCaptureWoundedMark);
+                MindControlIgnoreSize = general.GetBool("MindControl.IgnoreSize", MindControlIgnoreSize);
+                MultiMindControlReleaseVictim = general.GetBool("MultiMindControl.ReleaseVictim", MultiMindControlReleaseVictim);
+            }
+        }
+    }
+
     /// <summary>类型表的统一装配入口：顺序照 [VehicleTypes]…，就地表里查 art。</summary>
     public static class TypeTables
     {
@@ -1811,6 +1878,7 @@ namespace Ra2md.World
             PrerequisiteGroups.Load(rules);
             TerrainRules.Load(rules);
             MissileSpawnRules.Load(rules);
+            MindControlRules.Load(rules);
 
             BuildList(rules, art, "VehicleTypes", UnitTypeClass.Array, (id, i) => new UnitTypeClass());
             BuildList(rules, art, "InfantryTypes", InfantryTypeClass.Array, (id, i) => new InfantryTypeClass());

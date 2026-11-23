@@ -323,9 +323,43 @@ namespace Ra2md.World
                         MultiplayPassive = sec != null && sec.GetBool("MultiplayPassive"),
                         WallOwner = sec != null && sec.GetBool("WallOwner"),
                         SmartAI = sec != null && sec.GetBool("SmartAI"),
-                        ParentCountry = string.Empty,   // rulesmd 的 [国家] 段没有该键（[未确认 ParentCountry 来源]）
+                        ParentCountry = sec != null ? sec.GetString("ParentCountry", c.Id) : c.Id,
                         ColorSchemeIndex = -1,          // 颜色方案表（colorscheme）未落地 → 每次开局限 -1
                     };
+                    if (sec != null)
+                    {
+                        // 原生国家倍率，缺省 1.0（参考 ruleset.rs CountryRules 默认口径）
+                        t.FirepowerMult = sec.GetDouble("Firepower", 1.0);
+                        t.GroundspeedMult = sec.GetDouble("Groundspeed", 1.0);
+                        t.AirspeedMult = sec.GetDouble("Airspeed", 1.0);
+                        t.ArmorMult = sec.GetDouble("Armor", 1.0);
+                        t.ROFMult = sec.GetDouble("ROF", 1.0);
+                        t.CostMult = sec.GetDouble("Cost", 1.0);
+                        t.BuildtimeMult = sec.GetDouble("BuildTime", 1.0);
+                        t.IncomeMult = (float)sec.GetDouble("IncomeMult", 1.0);
+                        t.ArmorInfantryMult = (float)sec.GetDouble("ArmorInfantryMult", 1.0);
+                        t.ArmorUnitsMult = (float)sec.GetDouble("ArmorUnitsMult", 1.0);
+                        t.ArmorAircraftMult = (float)sec.GetDouble("ArmorAircraftMult", 1.0);
+                        t.ArmorBuildingsMult = (float)sec.GetDouble("ArmorBuildingsMult", 1.0);
+                        t.ArmorDefensesMult = (float)sec.GetDouble("ArmorDefensesMult", 1.0);
+                        t.CostInfantryMult = (float)sec.GetDouble("CostInfantryMult", 1.0);
+                        t.CostUnitsMult = (float)sec.GetDouble("CostUnitsMult", 1.0);
+                        t.CostAircraftMult = (float)sec.GetDouble("CostAircraftMult", 1.0);
+                        t.CostBuildingsMult = (float)sec.GetDouble("CostBuildingsMult", 1.0);
+                        t.CostDefensesMult = (float)sec.GetDouble("CostDefensesMult", 1.0);
+                        t.SpeedInfantryMult = (float)sec.GetDouble("SpeedInfantryMult", 1.0);
+                        t.SpeedUnitsMult = (float)sec.GetDouble("SpeedUnitsMult", 1.0);
+                        t.SpeedAircraftMult = (float)sec.GetDouble("SpeedAircraftMult", 1.0);
+                        t.BuildtimeInfantryMult = (float)sec.GetDouble("BuildTimeInfantryMult", 1.0);
+                        t.BuildtimeUnitsMult = (float)sec.GetDouble("BuildTimeUnitsMult", 1.0);
+                        t.BuildtimeAircraftMult = (float)sec.GetDouble("BuildTimeAircraftMult", 1.0);
+                        t.BuildtimeBuildingsMult = (float)sec.GetDouble("BuildTimeBuildingsMult", 1.0);
+                        t.BuildtimeDefensesMult = (float)sec.GetDouble("BuildTimeDefensesMult", 1.0);
+                        // 老兵类型名单：类型表闭包后再解析为索引
+                        t.VeteranInfantryNames.AddRange(MapIniDocument.SplitComma(sec.GetString("VeteranInfantry", string.Empty)));
+                        t.VeteranUnitsNames.AddRange(MapIniDocument.SplitComma(sec.GetString("VeteranUnits", string.Empty)));
+                        t.VeteranAircraftNames.AddRange(MapIniDocument.SplitComma(sec.GetString("VeteranAircraft", string.Empty)));
+                    }
                     var prefix = sec != null ? sec.GetString("Prefix", string.Empty) : string.Empty;
                     t.Prefix = prefix.Length > 0 ? prefix[0] : '\0';
                     t.UIName = MenuStrings.Get(t.UINameLabel, t.Name);

@@ -272,6 +272,10 @@ namespace Ra2md.World
         public readonly List<int> VeteranInfantry = new List<int>();      // TypeList<*> → 类型索引
         public readonly List<int> VeteranUnits = new List<int>();
         public readonly List<int> VeteranAircraft = new List<int>();
+        // 规则 pass 期间类型表尚未闭包，先留原始 token，待类型表装配后解析为上面的索引
+        public readonly List<string> VeteranInfantryNames = new List<string>();
+        public readonly List<string> VeteranUnitsNames = new List<string>();
+        public readonly List<string> VeteranAircraftNames = new List<string>();
         public string Suffix = string.Empty;   // char Suffix[4]
         public char Prefix;
         public bool Multiplay;

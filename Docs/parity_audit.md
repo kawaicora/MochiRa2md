@@ -112,8 +112,8 @@
 | building_upgrade.rs | 建筑升级槽：PowersUpBuilding(24 字符，空保留，`none` 为字面文本)、PowersUpToLevel(默认 -1，不钳制)、Upgrades(默认 0，不钳制)；3 槽 PowerUp{1..3}Anim/DamagedAnim/LocXX/YY/ZZ/YSort（读 ART 段，仅 Upgrades>0 的槽位可达） | BuildingTypeClass 已补主机名/等级/槽位数与 3 条 BuildingPowerUpArt 记录（Anim/受损 Anim/三坐标/YSort），按 ImageId 取 art 段 | 部分 | 缺口：主机名→BuildingType 索引闭包未解析；升级安装/退役事务、槽位容量门控、跨 INI 层保留旧值的运行时规则未实现 |
 | building_extra_power.rs | 额外供能 | 待核对 |
 | building_select_bracket.rs | 选中框 | 待核对 |
-| gattling_type.rs | 加特林 | 待核对 |
-| gunner_turrets.rs | 炮塔乘员 | 待核对 |
+| gattling_type.rs | 加特林分段：IsGattling、WeaponStages、RateUp/RateDown；IsGattling 且 WeaponStages>1 时读 Stage1..N/EliteStage1..N（15 格连续块，无钳制，Stage7 叠写 EliteStage1、EliteStage7 叠写 RateUp） | TechnoTypeClass 已补 IsGattling 与 15 格 GattlingBlock，按原生顺序读 WeaponStages/RateUp/RateDown，门控循环读 Stage/EliteStage 并保留叠写槽位 | 部分 | 缺口：分段阈值→开火速率/阶段状态机（GattlingState 累加、阶段切换、精英表）运行时未实现；块外越界键（EliteStage9+/Stage15+）按参考残留口径丢弃 |
+| gunner_turrets.rs | 炮手/IFV 炮塔：Gunner、IsChargeTurret；18 武器槽炮塔表（缺省 -1）；原版仅 Vehicle `FV` 读 17 对 *TurretIndex/*TurretWeapon（索引字面缺省、武器缺省 -1；武器=-1 写 charge 位，否则炮塔号写入武器槽）；Ares 路线 Gunner 车辆另读 WeaponTurretIndex{N}/WeaponUIName{N} 与扩展表 | TechnoTypeClass 已补 Gunner/IsChargeTurret、18 槽 TurretSlots（-1 初值）、ExtraTurrets/TurretUiNames；FV 17 对映射按原生缺省口径落地 | 部分 | 缺口：Ares 路线编号炮塔别名/UI 名标签未读；炮塔号→模型精灵/朝向切换运行时未实现；武器槽越界自定义索引按参考安全边界忽略 |
 | missile_spawn.rs | 导弹生成 | 待核对 |
 | recoil.rs | 后座 | 待核对 |
 | weapon_offsets.rs | 武器 FLH 偏移 | 待核对 |

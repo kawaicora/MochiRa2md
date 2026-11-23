@@ -433,6 +433,41 @@ namespace Ra2md.World
         public bool ChronoshiftAllow = true;
         public bool ChronoshiftIsVehicle;
         public bool ChronoshiftCrushable = true;
+        // ---- 加特林分段表（15 格连续块：0=WeaponStages，1..6=Stage1..6，7..12=EliteStage1..6，13=RateUp，14=RateDown）----
+        public bool IsGattling;
+        public readonly int[] GattlingBlock = new int[15];
+        // ---- 炮手/IFV 炮塔表（18 武器槽，未读条目 -1）----
+        public bool Gunner;
+        public bool IsChargeTurret;
+        public readonly int[] TurretSlots = new int[18];
+        public readonly List<int> ExtraTurrets = new List<int>();
+        public readonly List<string> TurretUiNames = new List<string>();
+
+        private static readonly (string IndexKey, string WeaponKey, int DefaultIndex)[] FvTurretPairs =
+        {
+            ("NormalTurretIndex", "NormalTurretWeapon", 0),
+            ("RepairTurretIndex", "RepairTurretWeapon", 1),
+            ("MachineGunTurretIndex", "MachineGunTurretWeapon", 2),
+            ("FlakTurretIndex", "FlakTurretWeapon", 3),
+            ("PistolTurretIndex", "PistolTurretWeapon", 0),
+            ("SniperTurretIndex", "SniperTurretWeapon", 0),
+            ("ShockTurretIndex", "ShockTurretWeapon", 0),
+            ("ExplodeTurretIndex", "ExplodeTurretWeapon", 0),
+            ("BrainBlastTurretIndex", "BrainBlastTurretWeapon", 0),
+            ("RadCannonTurretIndex", "RadCannonTurretWeapon", 0),
+            ("ChronoTurretIndex", "ChronoTurretWeapon", 0),
+            ("TerroristExplodeTurretIndex", "TerroristExplodeTurretWeapon", 0),
+            ("CowTurretIndex", "CowTurretWeapon", 0),
+            ("InitiateTurretIndex", "InitiateTurretWeapon", 0),
+            ("VirusTurretIndex", "VirusTurretWeapon", 0),
+            ("YuriPrimeTurretIndex", "YuriPrimeTurretWeapon", 0),
+            ("GuardianTurretIndex", "GuardianTurretWeapon", 0),
+        };
+
+        protected TechnoTypeClass()
+        {
+            for (var i = 0; i < TurretSlots.Length; i++) TurretSlots[i] = -1;
+        }
         public bool ResourceGatherer;
         public bool ResourceDestination;
         public bool Crushable;
@@ -537,6 +572,33 @@ namespace Ra2md.World
             ChronoshiftAllow = sec.GetBool("Chronoshift.Allow", true);
             ChronoshiftIsVehicle = sec.GetBool("Chronoshift.IsVehicle", false);
             ChronoshiftCrushable = sec.GetBool("Chronoshift.Crushable", true);
+            IsGattling = sec.GetBool("IsGattling");
+            GattlingBlock[0] = sec.GetInt("WeaponStages", GattlingBlock[0]);
+            GattlingBlock[13] = sec.GetInt("RateUp", GattlingBlock[13]);
+            GattlingBlock[14] = sec.GetInt("RateDown", GattlingBlock[14]);
+            var gattlingCount = GattlingBlock[0];
+            if (IsGattling && gattlingCount > 1)
+            {
+                var gattlingLast = Math.Min(gattlingCount, 14);
+                for (var gattlingIndex = 1; gattlingIndex <= gattlingLast; gattlingIndex++)
+                {
+                    GattlingBlock[gattlingIndex] = sec.GetInt("Stage" + gattlingIndex, GattlingBlock[gattlingIndex]);
+                    var eliteSlot = 6 + gattlingIndex;
+                    if (eliteSlot < 15) GattlingBlock[eliteSlot] = sec.GetInt("EliteStage" + gattlingIndex, GattlingBlock[eliteSlot]);
+                }
+            }
+            Gunner = sec.GetBool("Gunner", Gunner);
+            IsChargeTurret = sec.GetBool("IsChargeTurret", IsChargeTurret);
+            if (string.Equals(ID, "FV", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var pair in FvTurretPairs)
+                {
+                    var turret = sec.GetInt(pair.IndexKey, pair.DefaultIndex);
+                    var weapon = sec.GetInt(pair.WeaponKey, -1);
+                    if (weapon == -1) IsChargeTurret = turret != 0;
+                    else if (weapon >= 0 && weapon < TurretSlots.Length) TurretSlots[weapon] = turret;
+                }
+            }
             ResourceGatherer = sec.GetBool("ResourceGatherer");
             ResourceDestination = sec.GetBool("ResourceDestination");
             Crushable = sec.GetBool("Crushable", Category == "Infantry");

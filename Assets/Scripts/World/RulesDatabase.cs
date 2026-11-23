@@ -409,6 +409,19 @@ namespace Ra2md.World
         public int IdleRate;
         public int ThreatPosed;
         public int LeadershipRating = 5;
+        // ---- 威胁系数（参考 threat_coefficients.rs，构造缺省 0；类型未写则回退 [General] <Key>Default）----
+        public double MyEffectivenessCoefficient;
+        public double TargetEffectivenessCoefficient;
+        public double TargetSpecialThreatCoefficient;
+        public double TargetStrengthCoefficient;
+        public double TargetDistanceCoefficient;
+        // ---- 空袭小队配置（参考 airstrike.rs；精英计数/类型/缺额回退普通档）----
+        public int AirstrikeTeam;
+        public int EliteAirstrikeTeam;
+        public string AirstrikeTeamType;
+        public string EliteAirstrikeTeamType;
+        public int AirstrikeRechargeTime;
+        public int EliteAirstrikeRechargeTime;
         public bool Trainable = true;
         public bool AIBuildThis;
         public bool AllowedToStartInMultiplayer = true;
@@ -581,6 +594,28 @@ namespace Ra2md.World
             IdleRate = sec.GetInt("IdleRate", 0);
             ThreatPosed = sec.GetInt("ThreatPosed", 0);
             LeadershipRating = sec.GetInt("LeadershipRating", 5);
+            MyEffectivenessCoefficient = sec.HasKey("MyEffectivenessCoefficient")
+                ? sec.GetDouble("MyEffectivenessCoefficient", ThreatCoefficientRules.Defaults[0])
+                : ThreatCoefficientRules.Defaults[0];
+            TargetEffectivenessCoefficient = sec.HasKey("TargetEffectivenessCoefficient")
+                ? sec.GetDouble("TargetEffectivenessCoefficient", ThreatCoefficientRules.Defaults[1])
+                : ThreatCoefficientRules.Defaults[1];
+            TargetSpecialThreatCoefficient = sec.HasKey("TargetSpecialThreatCoefficient")
+                ? sec.GetDouble("TargetSpecialThreatCoefficient", ThreatCoefficientRules.Defaults[2])
+                : ThreatCoefficientRules.Defaults[2];
+            TargetStrengthCoefficient = sec.HasKey("TargetStrengthCoefficient")
+                ? sec.GetDouble("TargetStrengthCoefficient", ThreatCoefficientRules.Defaults[3])
+                : ThreatCoefficientRules.Defaults[3];
+            TargetDistanceCoefficient = sec.HasKey("TargetDistanceCoefficient")
+                ? sec.GetDouble("TargetDistanceCoefficient", ThreatCoefficientRules.Defaults[4])
+                : ThreatCoefficientRules.Defaults[4];
+            AirstrikeTeam = sec.GetInt("AirstrikeTeam", AirstrikeTeam);
+            EliteAirstrikeTeam = sec.GetInt("EliteAirstrikeTeam", AirstrikeTeam);
+            AirstrikeTeamType = sec.GetString("AirstrikeTeamType", string.Empty);
+            var eliteAirstrikeType = sec.GetString("EliteAirstrikeTeamType", string.Empty);
+            EliteAirstrikeTeamType = string.IsNullOrEmpty(eliteAirstrikeType) ? AirstrikeTeamType : eliteAirstrikeType;
+            AirstrikeRechargeTime = sec.GetInt("AirstrikeRechargeTime", AirstrikeRechargeTime);
+            EliteAirstrikeRechargeTime = sec.GetInt("EliteAirstrikeRechargeTime", AirstrikeRechargeTime);
             Trainable = sec.GetBool("Trainable", Category != "Building");
             AIBuildThis = sec.GetBool("AIBuildThis");
             AllowedToStartInMultiplayer = sec.GetBool("AllowedToStartInMultiplayer", true);
@@ -1146,6 +1181,8 @@ namespace Ra2md.World
         public bool MindControl;
         public bool Poison;
         public bool Airstrike;
+        // Phobos [Warhead] AirstrikeTargets 掩码：Infantry1/Unit2/Building4/Aircraft8，缺省 Building
+        public int AirstrikeTargets = 4;
         public bool Radiation;
         public bool Culling;
         public int Paralyzes;
@@ -1216,6 +1253,30 @@ namespace Ra2md.World
             MindControl = sec.GetBool("MindControl");
             Poison = sec.GetBool("Poison");
             Airstrike = sec.GetBool("Airstrike");
+            if (sec.HasKey("AirstrikeTargets"))
+            {
+                var tokens = MapIniDocument.SplitComma(sec.GetString("AirstrikeTargets", string.Empty));
+                var mask = 0;
+                var ok = true;
+                foreach (var rawToken in tokens)
+                {
+                    var token = rawToken.Trim();
+                    if (token.Length == 0) { ok = false; break; }
+                    int bit;
+                    if (token.Equals("Infantry", StringComparison.OrdinalIgnoreCase)) bit = 1;
+                    else if (token.Equals("Units", StringComparison.OrdinalIgnoreCase)) bit = 2;
+                    else if (token.Equals("Buildings", StringComparison.OrdinalIgnoreCase)) bit = 4;
+                    else if (token.Equals("Aircraft", StringComparison.OrdinalIgnoreCase)) bit = 8;
+                    else if (token.Equals("All", StringComparison.OrdinalIgnoreCase)) { mask = 15; continue; }
+                    else if (token.Equals("None", StringComparison.OrdinalIgnoreCase)
+                             || token.Equals("Land", StringComparison.OrdinalIgnoreCase)
+                             || token.Equals("Water", StringComparison.OrdinalIgnoreCase)
+                             || token.Equals("Empty", StringComparison.OrdinalIgnoreCase)) continue;
+                    else { ok = false; break; }
+                    mask |= bit;
+                }
+                if (ok) AirstrikeTargets = mask;
+            }
             Radiation = sec.GetBool("Radiation");
             Culling = sec.GetBool("Culling");
             Paralyzes = sec.GetInt("Paralyzes", 0);
@@ -2010,6 +2071,27 @@ namespace Ra2md.World
         public int[] Rgb = new int[3];
     }
 
+    /// <summary>威胁系数 [General] 默认表（参考 threat_coefficients.rs；五键缺省 0）。</summary>
+    public static class ThreatCoefficientRules
+    {
+        public static readonly double[] Defaults = new double[5];
+        private static readonly string[] Keys =
+        {
+            "MyEffectivenessCoefficient",
+            "TargetEffectivenessCoefficient",
+            "TargetSpecialThreatCoefficient",
+            "TargetStrengthCoefficient",
+            "TargetDistanceCoefficient",
+        };
+
+        public static void Load(RulesDatabase rules)
+        {
+            var general = rules.GetSection("General");
+            for (var i = 0; i < 5; i++)
+                Defaults[i] = general != null ? general.GetDouble(Keys[i] + "Default", 0.0) : 0.0;
+        }
+    }
+
     /// <summary>[ColorAdd] 16 槽固定表 + [AudioVisual] 四个颜色选择器下标（参考 color_add.rs）。</summary>
     public static class ColorAddRules
     {
@@ -2069,6 +2151,7 @@ namespace Ra2md.World
             PowerupTable.Load(rules);
             ColorSchemeRules.Load(rules);
             ColorAddRules.Load(rules);
+            ThreatCoefficientRules.Load(rules);
 
             BuildList(rules, art, "VehicleTypes", UnitTypeClass.Array, (id, i) => new UnitTypeClass());
             BuildList(rules, art, "InfantryTypes", InfantryTypeClass.Array, (id, i) => new InfantryTypeClass());

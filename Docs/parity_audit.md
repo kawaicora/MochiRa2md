@@ -114,8 +114,8 @@
 | building_select_bracket.rs | 选中框 | 待核对 |
 | gattling_type.rs | 加特林分段：IsGattling、WeaponStages、RateUp/RateDown；IsGattling 且 WeaponStages>1 时读 Stage1..N/EliteStage1..N（15 格连续块，无钳制，Stage7 叠写 EliteStage1、EliteStage7 叠写 RateUp） | TechnoTypeClass 已补 IsGattling 与 15 格 GattlingBlock，按原生顺序读 WeaponStages/RateUp/RateDown，门控循环读 Stage/EliteStage 并保留叠写槽位 | 部分 | 缺口：分段阈值→开火速率/阶段状态机（GattlingState 累加、阶段切换、精英表）运行时未实现；块外越界键（EliteStage9+/Stage15+）按参考残留口径丢弃 |
 | gunner_turrets.rs | 炮手/IFV 炮塔：Gunner、IsChargeTurret；18 武器槽炮塔表（缺省 -1）；原版仅 Vehicle `FV` 读 17 对 *TurretIndex/*TurretWeapon（索引字面缺省、武器缺省 -1；武器=-1 写 charge 位，否则炮塔号写入武器槽）；Ares 路线 Gunner 车辆另读 WeaponTurretIndex{N}/WeaponUIName{N} 与扩展表 | TechnoTypeClass 已补 Gunner/IsChargeTurret、18 槽 TurretSlots（-1 初值）、ExtraTurrets/TurretUiNames；FV 17 对映射按原生缺省口径落地 | 部分 | 缺口：Ares 路线编号炮塔别名/UI 名标签未读；炮塔号→模型精灵/朝向切换运行时未实现；武器槽越界自定义索引按参考安全边界忽略 |
-| missile_spawn.rs | 导弹生成 | 待核对 |
-| recoil.rs | 后座 | 待核对 |
+| missile_spawn.rs | 三族火箭块（V3Rocket/DMisl/CMisl）：PauseFrames/TiltFrames/PitchInitial/PitchFinal/TurnRate/RaiseRate/Acceleration/Altitude/Damage/EliteDamage/BodyLength/LazyCurve/Type；[CombatDamage] 普通+精英弹头（精英缺省回退本族普通）；CMisl 加速度缺省回退 DMisl 当场值；构造缺省 V3(0/60/0/1.0/0.05/1/0.4/768/1000/1000/256/true)、DMisl(10/60/0/1.0/0.05/1/0.4/768/1000/1000/128/false)、CMisl(10/30/1.0/1.0/1.0/1/0.6/768/500/500/128/false) | MissileSpawnParams + MissileSpawnRules 三族块已落地，按 [General] 前缀读标量与 Type，[CombatDamage] 读双弹头，含 CMisl 加速度回退与精英弹头回退 | 部分 | 缺口：TypeName/Warhead 未做类型表索引闭包；火箭族判定 family_of/rocket_family、神风等待帧、火箭 locomotor 俯仰/爬升/弹道与 Detonate 精英选择运行时未实现；Ares CustomMissile 块（起飞/尾迹动画、间距、自定义武器）未读 |
+| recoil.rs | 后座：TurretRecoil 开关；炮塔组 TurretTravel(2)/CompressFrames(1)/HoldFrames(1)/RecoverFrames(1)；炮管组先复制炮塔值再被 Barrel* 覆盖；三个帧计数 clamp ≥1 | TechnoTypeClass 已补炮塔/炮管各四参，炮管种子复制炮塔后读 Barrel* 覆盖，帧计数下限 1 | 部分 | 缺口：后座压缩/保持/恢复帧的枪管/炮塔位移动画运行时未实现 |
 | weapon_offsets.rs | 武器 FLH 偏移 | 待核对 |
 | attach_effect.rs | 附着效果 | 待核对 |
 | mind_control_rules.rs | 精神控制规则 | 待核对 |

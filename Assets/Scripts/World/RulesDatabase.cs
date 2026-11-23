@@ -442,6 +442,16 @@ namespace Ra2md.World
         public readonly int[] TurretSlots = new int[18];
         public readonly List<int> ExtraTurrets = new List<int>();
         public readonly List<string> TurretUiNames = new List<string>();
+        // ---- 后座（炮塔/炮管各一组：travel、压缩、保持、恢复帧）----
+        public bool TurretRecoil;
+        public int TurretTravel = 2;
+        public int TurretCompressFrames = 1;
+        public int TurretHoldFrames = 1;
+        public int TurretRecoverFrames = 1;
+        public int BarrelTravel = 2;
+        public int BarrelCompressFrames = 1;
+        public int BarrelHoldFrames = 1;
+        public int BarrelRecoverFrames = 1;
 
         private static readonly (string IndexKey, string WeaponKey, int DefaultIndex)[] FvTurretPairs =
         {
@@ -599,6 +609,19 @@ namespace Ra2md.World
                     else if (weapon >= 0 && weapon < TurretSlots.Length) TurretSlots[weapon] = turret;
                 }
             }
+            TurretRecoil = sec.GetBool("TurretRecoil", TurretRecoil);
+            TurretTravel = sec.GetInt("TurretTravel", TurretTravel);
+            TurretCompressFrames = Math.Max(1, sec.GetInt("TurretCompressFrames", TurretCompressFrames));
+            TurretHoldFrames = Math.Max(1, sec.GetInt("TurretHoldFrames", TurretHoldFrames));
+            TurretRecoverFrames = Math.Max(1, sec.GetInt("TurretRecoverFrames", TurretRecoverFrames));
+            BarrelTravel = TurretTravel;
+            BarrelCompressFrames = TurretCompressFrames;
+            BarrelHoldFrames = TurretHoldFrames;
+            BarrelRecoverFrames = TurretRecoverFrames;
+            BarrelTravel = sec.GetInt("BarrelTravel", BarrelTravel);
+            BarrelCompressFrames = Math.Max(1, sec.GetInt("BarrelCompressFrames", BarrelCompressFrames));
+            BarrelHoldFrames = Math.Max(1, sec.GetInt("BarrelHoldFrames", BarrelHoldFrames));
+            BarrelRecoverFrames = Math.Max(1, sec.GetInt("BarrelRecoverFrames", BarrelRecoverFrames));
             ResourceGatherer = sec.GetBool("ResourceGatherer");
             ResourceDestination = sec.GetBool("ResourceDestination");
             Crushable = sec.GetBool("Crushable", Category == "Infantry");
@@ -1614,6 +1637,89 @@ namespace Ra2md.World
         }
     }
 
+    /// <summary>火箭/导弹生成参数（参考 missile_spawn.rs：一个 RocketStruct 及其双弹头）。</summary>
+    public sealed class MissileSpawnParams
+    {
+        public string TypeName;
+        public int PauseFrames;
+        public int TiltFrames;
+        public float PitchInitial;
+        public float PitchFinal = 1f;
+        public float TurnRate;
+        public int RaiseRate = 1;
+        public float Acceleration;
+        public int Altitude = 0x300;
+        public int Damage;
+        public int EliteDamage;
+        public int BodyLength;
+        public bool LazyCurve;
+        public string Warhead;
+        public string EliteWarhead;
+    }
+
+    /// <summary>三族火箭块（V3Rocket / DMisl / CMisl），[General] 标量 + [CombatDamage] 双弹头。</summary>
+    public static class MissileSpawnRules
+    {
+        public static readonly MissileSpawnParams V3 = new MissileSpawnParams
+        {
+            PauseFrames = 0, TiltFrames = 60, PitchInitial = 0f, PitchFinal = 1f,
+            TurnRate = 0.05f, RaiseRate = 1, Acceleration = 0.4f, Altitude = 0x300,
+            Damage = 1000, EliteDamage = 1000, BodyLength = 0x100, LazyCurve = true,
+        };
+        public static readonly MissileSpawnParams DMisl = new MissileSpawnParams
+        {
+            PauseFrames = 10, TiltFrames = 60, PitchInitial = 0f, PitchFinal = 1f,
+            TurnRate = 0.05f, RaiseRate = 1, Acceleration = 0.4f, Altitude = 0x300,
+            Damage = 1000, EliteDamage = 1000, BodyLength = 0x80, LazyCurve = false,
+        };
+        public static readonly MissileSpawnParams CMisl = new MissileSpawnParams
+        {
+            PauseFrames = 10, TiltFrames = 0x1E, PitchInitial = 1f, PitchFinal = 1f,
+            TurnRate = 1f, RaiseRate = 1, Acceleration = 0.6f, Altitude = 0x300,
+            Damage = 500, EliteDamage = 500, BodyLength = 0x80, LazyCurve = false,
+        };
+
+        private static void ReadGeneral(MissileSpawnParams block, IniSection general, string prefix, float accelDefault)
+        {
+            block.PauseFrames = general.GetInt(prefix + "PauseFrames", block.PauseFrames);
+            block.TiltFrames = general.GetInt(prefix + "TiltFrames", block.TiltFrames);
+            block.PitchInitial = (float)general.GetDouble(prefix + "PitchInitial", block.PitchInitial);
+            block.PitchFinal = (float)general.GetDouble(prefix + "PitchFinal", block.PitchFinal);
+            block.TurnRate = (float)general.GetDouble(prefix + "TurnRate", block.TurnRate);
+            block.RaiseRate = (int)general.GetDouble(prefix + "RaiseRate", block.RaiseRate);
+            block.Acceleration = (float)general.GetDouble(prefix + "Acceleration", accelDefault);
+            block.Altitude = general.GetInt(prefix + "Altitude", block.Altitude);
+            block.Damage = general.GetInt(prefix + "Damage", block.Damage);
+            block.EliteDamage = general.GetInt(prefix + "EliteDamage", block.EliteDamage);
+            block.BodyLength = general.GetInt(prefix + "BodyLength", block.BodyLength);
+            block.LazyCurve = general.GetBool(prefix + "LazyCurve", block.LazyCurve);
+            block.TypeName = general.GetString(prefix + "Type", block.TypeName);
+        }
+
+        public static void Load(RulesDatabase rules)
+        {
+            var general = rules.GetSection("General");
+            if (general != null)
+            {
+                ReadGeneral(V3, general, "V3Rocket", V3.Acceleration);
+                ReadGeneral(DMisl, general, "DMisl", DMisl.Acceleration);
+                // CMisl 加速度缺省回退到 DMisl 当场值（参考口径）。
+                ReadGeneral(CMisl, general, "CMisl", DMisl.Acceleration);
+            }
+            var combat = rules.GetSection("CombatDamage");
+            if (combat != null)
+            {
+                V3.Warhead = combat.GetString("V3Warhead", V3.Warhead);
+                DMisl.Warhead = combat.GetString("DMislWarhead", DMisl.Warhead);
+                CMisl.Warhead = combat.GetString("CMislWarhead", CMisl.Warhead);
+                // 精英弹头缺省回退到本族普通弹头（参考口径）。
+                V3.EliteWarhead = combat.GetString("V3EliteWarhead", V3.Warhead);
+                DMisl.EliteWarhead = combat.GetString("DMislEliteWarhead", DMisl.Warhead);
+                CMisl.EliteWarhead = combat.GetString("CMislEliteWarhead", CMisl.Warhead);
+            }
+        }
+    }
+
     /// <summary>类型表的统一装配入口：顺序照 [VehicleTypes]…，就地表里查 art。</summary>
     public static class TypeTables
     {
@@ -1629,6 +1735,7 @@ namespace Ra2md.World
             ArmorTypes.Array.AddRange(rules.GetValueList("ArmorTypes"));
             PrerequisiteGroups.Load(rules);
             TerrainRules.Load(rules);
+            MissileSpawnRules.Load(rules);
 
             BuildList(rules, art, "VehicleTypes", UnitTypeClass.Array, (id, i) => new UnitTypeClass());
             BuildList(rules, art, "InfantryTypes", InfantryTypeClass.Array, (id, i) => new InfantryTypeClass());

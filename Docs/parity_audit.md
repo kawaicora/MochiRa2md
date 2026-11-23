@@ -130,8 +130,8 @@
 | team_ai_ini.rs | 小队 AI INI | 待核对 |
 | threat_coefficients.rs | 威胁系数 | 待核对 |
 | end_game.rs | 终局判定 | 待核对 |
-| superweapon_targeting.rs | 超武目标选择 | 待核对 |
-| superweapon_influence.rs | 超武影响 | 待核对 |
+| superweapon_targeting.rs | 超武目标选择：SW.ManualFire(默认 true)/AutoFire(false)/FireIntoShroud(true)/UseAITargeting(false)、SW.AffectsHouse/AffectsTarget/RequiresTarget/RequiresHouse/AIRequiresTarget/AIRequiresHouse 掩码、SW.AITargeting 模式/Constraints 约束/Preference 偏好、SW.RangeMinimum/Maximum(-1 无界)；TargetMask/HouseMask 位判定与 evaluate_target 预检 | SuperWeaponTypeClass 已补上述字段与原始 token 解析 | 部分 | 缺口：HouseMask/TargetMask 位表与解析未落地；手动/自动开火门控、AI 目标模式/偏好/约束、目标预检拒绝链、射程区间判定、时空门建筑位/遗传转化全 Techno 特判均未实现 |
+| superweapon_influence.rs | 超武设计器/抑制器：SW.Designators/AnyDesignator/SW.Inhibitors/AnyInhibitor；Techno 侧 HunterSeeker.Ignore、DesignatorRange/InhibitorRange（nullable）、Chronoshift.Allow(true)/IsVehicle(false)/Crushable(true) | SuperWeaponTypeClass 已补设计器/抑制器名单与开关；TechnoTypeClass 已补猎人忽略、双射程 nullable、时空门三态 | 部分 | 缺口：名单→TechnoType 索引闭包未解析；设计/抑制器覆盖判定、射程邻接判定、时空门放置/腾位/碾压规则运行时未实现 |
 | airstrike.rs / airstrike_targets.rs | 空袭 | 待核对 |
 | aircraft_trailer.rs | 飞机尾迹 | 待核对 |
 | bridge_warheads.rs | 桥弹头 | 待核对 |

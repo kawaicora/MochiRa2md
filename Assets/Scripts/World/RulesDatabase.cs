@@ -427,6 +427,12 @@ namespace Ra2md.World
         public bool NoSpawnAlt;
         public string WaterImage;
         public bool SensorArray;
+        public bool HunterSeekerIgnore;
+        public int? DesignatorRange;
+        public int? InhibitorRange;
+        public bool ChronoshiftAllow = true;
+        public bool ChronoshiftIsVehicle;
+        public bool ChronoshiftCrushable = true;
         public bool ResourceGatherer;
         public bool ResourceDestination;
         public bool Crushable;
@@ -525,6 +531,12 @@ namespace Ra2md.World
             NoSpawnAlt = sec.GetBool("NoSpawnAlt", false);
             WaterImage = sec.GetString("WaterImage", string.Empty);
             SensorArray = sec.GetBool("SensorArray", false);
+            HunterSeekerIgnore = sec.GetBool("HunterSeeker.Ignore", false);
+            DesignatorRange = sec.HasKey("DesignatorRange") ? sec.GetInt("DesignatorRange") : (int?)null;
+            InhibitorRange = sec.HasKey("InhibitorRange") ? sec.GetInt("InhibitorRange") : (int?)null;
+            ChronoshiftAllow = sec.GetBool("Chronoshift.Allow", true);
+            ChronoshiftIsVehicle = sec.GetBool("Chronoshift.IsVehicle", false);
+            ChronoshiftCrushable = sec.GetBool("Chronoshift.Crushable", true);
             ResourceGatherer = sec.GetBool("ResourceGatherer");
             ResourceDestination = sec.GetBool("ResourceDestination");
             Crushable = sec.GetBool("Crushable", Category == "Infantry");
@@ -1227,6 +1239,26 @@ namespace Ra2md.World
         public bool ShowCameo = true;
         public int LineMultiplier;
         public double Range = -1.0;
+        // 目标选择状态（参考 superweapon_targeting.rs 构造器默认）
+        public bool ManualFire = true;
+        public bool AutoFire;
+        public bool FireIntoShroud = true;
+        public bool UseAITargeting;
+        public string AffectsHouse = string.Empty;
+        public string AffectsTarget = string.Empty;
+        public string RequiresTarget = string.Empty;
+        public string RequiresHouse = string.Empty;
+        public string AiRequiresTarget = string.Empty;
+        public string AiRequiresHouse = string.Empty;
+        public string AiTargeting = string.Empty;
+        public string AiTargetConstraints = string.Empty;
+        public string AiTargetPreference = string.Empty;
+        public double RangeMinimum = -1.0;
+        public double RangeMaximum = -1.0;
+        public readonly List<string> Designators = new List<string>();
+        public bool AnyDesignator;
+        public readonly List<string> Inhibitors = new List<string>();
+        public bool AnyInhibitor;
 
         public static SuperWeaponTypeClass Find(string id) => TypeTables.Find(Array, id);
 
@@ -1256,6 +1288,25 @@ namespace Ra2md.World
             ShowCameo = sec.GetBool("SW.ShowCameo", true);
             LineMultiplier = sec.GetInt("LineMultiplier", 0);
             Range = sec.GetDouble("Range", -1.0);
+            ManualFire = sec.GetBool("SW.ManualFire", true);
+            AutoFire = sec.GetBool("SW.AutoFire", false);
+            FireIntoShroud = sec.GetBool("SW.FireIntoShroud", true);
+            UseAITargeting = sec.GetBool("SW.UseAITargeting", false);
+            AffectsHouse = sec.GetString("SW.AffectsHouse", string.Empty);
+            AffectsTarget = sec.GetString("SW.AffectsTarget", string.Empty);
+            RequiresTarget = sec.GetString("SW.RequiresTarget", string.Empty);
+            RequiresHouse = sec.GetString("SW.RequiresHouse", string.Empty);
+            AiRequiresTarget = sec.GetString("SW.AIRequiresTarget", string.Empty);
+            AiRequiresHouse = sec.GetString("SW.AIRequiresHouse", string.Empty);
+            AiTargeting = sec.GetString("SW.AITargeting", string.Empty);
+            AiTargetConstraints = sec.GetString("SW.AITargeting.Constraints", string.Empty);
+            AiTargetPreference = sec.GetString("SW.AITargeting.Preference", string.Empty);
+            RangeMinimum = sec.GetDouble("SW.RangeMinimum", -1.0);
+            RangeMaximum = sec.GetDouble("SW.RangeMaximum", -1.0);
+            Designators.AddRange(MapIniDocument.SplitComma(sec.GetString("SW.Designators", string.Empty)));
+            AnyDesignator = sec.GetBool("SW.AnyDesignator");
+            Inhibitors.AddRange(MapIniDocument.SplitComma(sec.GetString("SW.Inhibitors", string.Empty)));
+            AnyInhibitor = sec.GetBool("SW.AnyInhibitor");
         }
     }
 

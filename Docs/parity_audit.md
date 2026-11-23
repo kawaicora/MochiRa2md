@@ -98,9 +98,9 @@
 | ares_abilities.rs | 能力标志 | 待核对 |
 | ares_tiberium.rs | Ares 矿石扩展 | 待核对 |
 | phobos_*.rs | Phobos 扩展（crit/shields/radiation/airburst/placement_preview/...） | 待核对 |
-| terrain_object_type.rs | 地形对象（树/岩/桥/路障）类型 | 待核对 |
+| terrain_object_type.rs | 地形对象（树/岩/路障）类型：Armor 缺省 wood、Strength 缺省 -1→General TreeStrength、SpawnsTiberium/IsAnimated/AnimationRate/AnimationProbability/Immune/LegalTarget 缺省 false/IsFlammable false/Bombable true/Insignificant true/RadarInvisible true/WaterBound false/IsVeinhole（置位则清 IsLogic 并强制 LegalTarget）、Temperate/SnowOccupationBits 7、Foundation 占用位 | RulesDatabase.TerrainTypeClass（本轮新增，标志位已解析） | 部分 | 缺口：Strength=-1 的 General TreeStrength 回填未接；Foundation 占用位表与 occupy-list 偏移未落地；RadarColor/AlphaImage 未解析；标志位未被渲染/战斗/通行消费 |
 | overlay_types.rs | 覆盖物类型：序号→名字/Image，标志 Tiberium/Land/Strength 1/ChainReaction/Wall/DrawFlat true/Armor(wood)/LegalTarget true/IsVeins/IsVeinholeMonster/Gate/Crushable/Crate/CrateTrigger/Overrides/IsRubble/IsARock/NoUseTileLandType true/RadarColor；桥由硬编码序号判定（高桥 24/25/237/238；低木桥 74-101、122-125；低城桥 205-236） | RulesDatabase.OverlayTypeClass（本轮新增，标志位已解析，保留跳号索引）；OverlayMap 现仅消费序号→名字与 Image | 部分 | 缺口：Land 地形语义（LandType→通行/速度代价/挡地）表未落地；桥硬编码序号判定与高低桥区分未接；标志位尚未被渲染/通行/碾压逻辑消费；RadarColor RGB 未解析 |
-| smudge_type.rs | 弹痕/残骸污迹 | 待核对 |
+| smudge_type.rs | 污迹类型：Crater/Burn false、Width/Height 1、Image(25 字符)、AlphaImage；格偏移 = data % Width / Width | RulesDatabase.SmudgeTypeClass（本轮新增） | 部分 | 缺口：AlphaImage 未解析；污迹格偏移换算与渲染层未接 |
 | particle_type.rs | 粒子类型 | 待核对 |
 | particle_system_type.rs | 粒子系统类型 | 待核对 |
 | crate_rules.rs | 宝箱规则/半径/效果 | 待核对 |

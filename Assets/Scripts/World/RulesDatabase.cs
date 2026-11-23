@@ -1054,6 +1054,90 @@ namespace Ra2md.World
         }
     }
 
+    /// <summary>
+    /// TerrainTypeClass（[TerrainTypes] 表；参考 rules/terrain_object_type.rs）。
+    /// Strength 缺省 -1（待 [General] TreeStrength 回填）；LegalTarget 构造缺省 false；
+    /// IsVeinhole=true 时清 IsLogic 并强制 LegalTarget=true（参考口径）。
+    /// </summary>
+    public sealed class TerrainTypeClass : TypeClassBase
+    {
+        public static readonly List<TerrainTypeClass> Array = new List<TerrainTypeClass>();
+
+        public string ArmorName = "wood";
+        public int Strength = -1;
+        public bool SpawnsTiberium;
+        public bool IsAnimated;
+        public int AnimationRate;
+        public double AnimationProbability;
+        public bool Immune;
+        public bool LegalTarget;
+        public bool IsFlammable;
+        public bool Bombable = true;
+        public bool Insignificant = true;
+        public bool RadarInvisible = true;
+        public bool WaterBound;
+        public bool IsVeinhole;
+        public bool IsLogic = true;
+        public int TemperateOccupationBits = 7;
+        public int SnowOccupationBits = 7;
+        public string FoundationName = string.Empty;
+
+        public static TerrainTypeClass Find(string id) => TypeTables.Find(Array, id);
+        public static TerrainTypeClass FindByIndex(int index) => TypeTables.FindByIndex(Array, index);
+
+        public override void LoadFrom(RulesDatabase rules, string id, int index)
+        {
+            base.LoadFrom(rules, id, index);
+            var sec = rules.GetSection(id);
+            if (sec == null) return;
+            ArmorName = sec.GetString("Armor", "wood");
+            Strength = sec.GetInt("Strength", -1);
+            SpawnsTiberium = sec.GetBool("SpawnsTiberium", false);
+            IsAnimated = sec.GetBool("IsAnimated", false);
+            AnimationRate = sec.GetInt("AnimationRate", 0);
+            AnimationProbability = sec.GetDouble("AnimationProbability", 0.0);
+            Immune = sec.GetBool("Immune", false);
+            LegalTarget = sec.GetBool("LegalTarget", false);
+            IsFlammable = sec.GetBool("IsFlammable", false);
+            Bombable = sec.GetBool("Bombable", true);
+            Insignificant = sec.GetBool("Insignificant", true);
+            RadarInvisible = sec.GetBool("RadarInvisible", true);
+            WaterBound = sec.GetBool("WaterBound", false);
+            IsVeinhole = sec.GetBool("IsVeinhole", false);
+            if (IsVeinhole) { IsLogic = false; LegalTarget = true; }
+            TemperateOccupationBits = sec.GetInt("TemperateOccupationBits", 7);
+            SnowOccupationBits = sec.GetInt("SnowOccupationBits", 7);
+        }
+    }
+
+    /// <summary>SmudgeTypeClass（[SmudgeTypes] 表；参考 rules/smudge_type.rs）。</summary>
+    public sealed class SmudgeTypeClass : TypeClassBase
+    {
+        public static readonly List<SmudgeTypeClass> Array = new List<SmudgeTypeClass>();
+
+        public string AlphaImage = string.Empty;
+        public bool Crater;
+        public bool Burn;
+        public int Width = 1;
+        public int Height = 1;
+
+        public static SmudgeTypeClass Find(string id) => TypeTables.Find(Array, id);
+        public static SmudgeTypeClass FindByIndex(int index) => TypeTables.FindByIndex(Array, index);
+
+        public override void LoadFrom(RulesDatabase rules, string id, int index)
+        {
+            base.LoadFrom(rules, id, index);
+            var sec = rules.GetSection(id);
+            if (sec == null) return;
+            Crater = sec.GetBool("Crater", false);
+            Burn = sec.GetBool("Burn", false);
+            Width = sec.GetInt("Width", 1);
+            Height = sec.GetInt("Height", 1);
+            var img = sec.GetString("Image", string.Empty).Trim();
+            if (img.Length > 0) ImageId = img;
+        }
+    }
+
     /// <summary>AnimTypeClass（[Animations] 表）。</summary>
     public sealed class AnimTypeClass : TypeClassBase
     {
@@ -1282,6 +1366,7 @@ namespace Ra2md.World
             BuildList(rules, art, "SuperWeaponTypes", SuperWeaponTypeClass.Array, (id, i) => new SuperWeaponTypeClass());
             BuildList(rules, art, "Tiberiums", TiberiumTypeClass.Array, (id, i) => new TiberiumTypeClass());
             BuildOverlays(rules);
+            BuildTerrainAndSmudge(rules);
             BuildWeaponAndWarhead(rules);
 
             UnitCount = UnitTypeClass.Array.Count;
@@ -1344,7 +1429,29 @@ namespace Ra2md.World
             }
         }
 
-        private static void BuildWeaponAndWarhead(RulesDatabase rules)        {
+        private static void BuildTerrainAndSmudge(RulesDatabase rules)
+        {
+            TerrainTypeClass.Array.Clear();
+            var terrainNames = rules.GetIndexedList("TerrainTypes");
+            for (var i = 0; i < terrainNames.Count; i++)
+            {
+                var t = new TerrainTypeClass();
+                t.LoadFrom(rules, terrainNames[i], i);
+                TerrainTypeClass.Array.Add(t);
+            }
+
+            SmudgeTypeClass.Array.Clear();
+            var smudgeNames = rules.GetIndexedList("SmudgeTypes");
+            for (var i = 0; i < smudgeNames.Count; i++)
+            {
+                var s = new SmudgeTypeClass();
+                s.LoadFrom(rules, smudgeNames[i], i);
+                SmudgeTypeClass.Array.Add(s);
+            }
+        }
+
+        private static void BuildWeaponAndWarhead(RulesDatabase rules)
+        {
             WeaponTypeClass.Array.Clear();
             WarheadTypeClass.Array.Clear();
             var weapons = new List<WeaponTypeClass>();

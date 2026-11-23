@@ -104,7 +104,7 @@
 | particle_type.rs | 粒子类型 | 待核对 |
 | particle_system_type.rs | 粒子系统类型 | 待核对 |
 | crate_rules.rs | 宝箱规则/半径/效果 | 待核对 |
-| combat_damage.rs | 伤害计算/装甲倍率/碾压/辐射 | 待核对 |
+| combat_damage.rs | [CombatDamage] 全局：MaxDamage 1000、CollapseChance 100、TerrainDeformation、DeformLowestLevel、RailgunDamageRadius 128、OpenToppedWarpDistance 5、FallingDamageMultiplier 1.0、CurrentStrengthDamage true、TiberiumExplosive、IvanDamage 100/IvanTimedDelay 450/IvanIconFlickerRate 8、CanDetonateTimeBomb/DeathBomb、BallisticScatter 256 lepton、Crush 384 lepton（1.8 格，ReadRange 截断） | 未落地（战斗系统整体未实现） | 未落地 | 全局 CombatDamage 段无类型化配置；弹头 Verses 11 项已在 WarheadTypeClass，装甲-弹头交互倍率查询、碾压半径、弹道散射、伊万炸弹参数均未接 |
 | jumpjet_params.rs | 跳喷高度/偏差/下限 | 待核对 |
 | foundation.rs 已列 | — | — |
 | building_light.rs | 建筑灯光可见性 | 待核对 |

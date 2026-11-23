@@ -1862,6 +1862,53 @@ namespace Ra2md.World
         }
     }
 
+    /// <summary>宝箱强化道具表（参考 powerups.rs：19 个固定槽位，[Powerups] 行 `权重,动画,可水上,幅值`）。</summary>
+    public static class PowerupTable
+    {
+        public static readonly string[] Names =
+        {
+            "Money", "Unit", "HealBase", "Cloak", "Explosion", "Napalm", "Squad", "Darkness",
+            "Reveal", "Armor", "Speed", "Firepower", "ICBM", "Invulnerability", "Veteran",
+            "IonStorm", "Gas", "Tiberium", "Pod",
+        };
+        public static readonly int[] Weights = { 50, 20, 1, 3, 5, 5, 20, 1, 1, 10, 10, 10, 1, 3, 1, 1, 1, 1, 1 };
+        public static readonly string[] AnimNames = new string[19];
+        public static readonly bool[] OverWater = new bool[19];
+        public static readonly double[] Magnitudes = new double[19];
+
+        public static void Load(RulesDatabase rules)
+        {
+            var sec = rules.GetSection("Powerups");
+            if (sec == null) return;
+            for (var slot = 0; slot < Names.Length; slot++)
+            {
+                var raw = sec.GetString(Names[slot], "0,NONE");
+                var tokens = raw.Split(',');
+                if (tokens.Length > 0 && int.TryParse(tokens[0].Trim(), out var weight)) Weights[slot] = weight;
+                if (tokens.Length > 1)
+                {
+                    var anim = tokens[1].Trim();
+                    AnimNames[slot] = string.Equals(anim, "<none>", StringComparison.OrdinalIgnoreCase) ? string.Empty : anim;
+                }
+                if (tokens.Length > 2)
+                {
+                    var flag = tokens[2].Trim();
+                    if (string.Equals(flag, "yes", StringComparison.OrdinalIgnoreCase)) OverWater[slot] = true;
+                    else if (string.Equals(flag, "no", StringComparison.OrdinalIgnoreCase)) OverWater[slot] = false;
+                }
+                if (tokens.Length > 3)
+                {
+                    var mag = tokens[3].Trim();
+                    var percent = mag.EndsWith("%");
+                    if (percent) mag = mag.Substring(0, mag.Length - 1).Trim();
+                    if (double.TryParse(mag, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out var magnitude))
+                        Magnitudes[slot] = percent ? magnitude / 100.0 : magnitude;
+                }
+            }
+        }
+    }
+
     /// <summary>类型表的统一装配入口：顺序照 [VehicleTypes]…，就地表里查 art。</summary>
     public static class TypeTables
     {
@@ -1879,6 +1926,7 @@ namespace Ra2md.World
             TerrainRules.Load(rules);
             MissileSpawnRules.Load(rules);
             MindControlRules.Load(rules);
+            PowerupTable.Load(rules);
 
             BuildList(rules, art, "VehicleTypes", UnitTypeClass.Array, (id, i) => new UnitTypeClass());
             BuildList(rules, art, "InfantryTypes", InfantryTypeClass.Array, (id, i) => new InfantryTypeClass());

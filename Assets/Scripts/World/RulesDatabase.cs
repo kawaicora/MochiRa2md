@@ -1909,6 +1909,146 @@ namespace Ra2md.World
         }
     }
 
+    /// <summary>一条 [Colors] 配色方案：名称 + H,S,V（0..255）。</summary>
+    public sealed class ColorSchemeEntry
+    {
+        public string Name;
+        public int[] Hsv = new int[3];
+    }
+
+    /// <summary>[Colors] 配色方案表与优先级→方案索引、原生 HSV→RGB 换算（参考 color_scheme.rs）。</summary>
+    public static class ColorSchemeRules
+    {
+        public static readonly List<ColorSchemeEntry> Schemes = new List<ColorSchemeEntry>();
+        private static readonly int[] PriorityToSchemeIndex = { 3, 11, 21, 29, 13, 25, 17, 15, 5 };
+        public const int RandomPrioritySchemeIndex = 5;
+        public const int MaxExtraColors = 22;
+        public static bool UnlimitedColors;
+        public static readonly List<string> ExtraColorNames = new List<string>();
+
+        public static void Load(RulesDatabase rules)
+        {
+            Schemes.Clear();
+            UnlimitedColors = false;
+            ExtraColorNames.Clear();
+            var general = rules.GetSection("General");
+            if (general != null) UnlimitedColors = general.GetBool("SkirmishUnlimitedColors", false);
+            var sec = rules.GetSection("Colors");
+            if (sec != null)
+            {
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var entry in sec.Entries)
+                {
+                    if (!seen.Add(entry.Key)) continue;
+                    var scheme = new ColorSchemeEntry { Name = entry.Key };
+                    var parts = MapIniDocument.SplitComma(entry.Value);
+                    for (var i = 0; i < 3; i++)
+                        scheme.Hsv[i] = i < parts.Length && int.TryParse(parts[i].Trim(), out var v)
+                            ? Math.Clamp(v, 0, 255) : 0;
+                    Schemes.Add(scheme);
+                }
+            }
+            var skirmish = rules.GetSection("SkirmishColors");
+            if (skirmish != null)
+            {
+                foreach (var entry in skirmish.Entries)
+                {
+                    if (ExtraColorNames.Count >= MaxExtraColors) break;
+                    var name = entry.Value.Trim();
+                    if (string.IsNullOrEmpty(name) || name.Equals("none", StringComparison.OrdinalIgnoreCase)) continue;
+                    ExtraColorNames.Add(name);
+                }
+            }
+        }
+
+        public static int SchemeIndexForPriority(int priority)
+        {
+            if (priority == -2) return RandomPrioritySchemeIndex;
+            if (priority >= 0 && priority < PriorityToSchemeIndex.Length) return PriorityToSchemeIndex[priority];
+            return Math.Max(0, priority);
+        }
+
+        public static int SchemeEntryForPriority(int priority) => SchemeIndexForPriority(priority) / 2;
+
+        public static int FindEntryByName(string name)
+        {
+            var want = (name ?? string.Empty).Trim();
+            for (var i = 0; i < Schemes.Count; i++)
+                if (string.Equals(Schemes[i].Name, want, StringComparison.OrdinalIgnoreCase)) return i;
+            return -1;
+        }
+
+        /// <summary>原生六分扇区整数 HSV→RGB，各通道 0..255，除法截断。</summary>
+        public static byte[] HsvToRgb(int[] hsv)
+        {
+            uint h = (uint)Math.Clamp(hsv[0], 0, 255);
+            uint s = (uint)Math.Clamp(hsv[1], 0, 255);
+            uint v = (uint)Math.Clamp(hsv[2], 0, 255);
+            var f = (h * 6) % 255;
+            var region = (h * 6) / 255;
+            var p = ((255 - s) * v) / 255;
+            var q = ((255 - (f * s) / 255) * v) / 255;
+            var t = ((255 - ((255 - f) * s) / 255) * v) / 255;
+            uint r, g, b;
+            switch (region)
+            {
+                case 1: r = q; g = v; b = p; break;
+                case 2: r = p; g = v; b = t; break;
+                case 3: r = p; g = q; b = v; break;
+                case 4: r = t; g = p; b = v; break;
+                case 5: r = v; g = p; b = q; break;
+                default: r = v; g = t; b = p; break;
+            }
+            return new byte[] { (byte)r, (byte)g, (byte)b };
+        }
+    }
+
+    /// <summary>一条 [ColorAdd] 槽位：名称 + 原始 RGB565 三通道。</summary>
+    public sealed class ColorAddEntry
+    {
+        public string Name;
+        public int[] Rgb = new int[3];
+    }
+
+    /// <summary>[ColorAdd] 16 槽固定表 + [AudioVisual] 四个颜色选择器下标（参考 color_add.rs）。</summary>
+    public static class ColorAddRules
+    {
+        public const int SlotCount = 16;
+        public static readonly List<ColorAddEntry> Slots = new List<ColorAddEntry>();
+        public static int LaserTargetColor;
+        public static int IronCurtainColor;
+        public static int BerserkColor;
+        public static int ForceShieldColor;
+
+        public static void Load(RulesDatabase rules)
+        {
+            Slots.Clear();
+            var sec = rules.GetSection("ColorAdd");
+            if (sec != null)
+            {
+                var slot = 0;
+                foreach (var entry in sec.Entries)
+                {
+                    if (slot >= SlotCount) break;
+                    var rgb = new int[3];
+                    var parts = MapIniDocument.SplitComma(entry.Value);
+                    for (var i = 0; i < 3; i++)
+                        if (i < parts.Length && int.TryParse(parts[i].Trim(), out var v)) rgb[i] = Math.Clamp(v, 0, 255);
+                    Slots.Add(new ColorAddEntry { Name = entry.Key, Rgb = rgb });
+                    slot++;
+                }
+            }
+            var av = rules.GetSection("AudioVisual");
+            if (av != null)
+            {
+                LaserTargetColor = av.GetInt("LaserTargetColor", LaserTargetColor);
+                IronCurtainColor = av.GetInt("IronCurtainColor", IronCurtainColor);
+                BerserkColor = av.GetInt("BerserkColor", BerserkColor);
+                ForceShieldColor = av.GetInt("ForceShieldColor", ForceShieldColor);
+            }
+        }
+    }
+
     /// <summary>类型表的统一装配入口：顺序照 [VehicleTypes]…，就地表里查 art。</summary>
     public static class TypeTables
     {
@@ -1927,6 +2067,8 @@ namespace Ra2md.World
             MissileSpawnRules.Load(rules);
             MindControlRules.Load(rules);
             PowerupTable.Load(rules);
+            ColorSchemeRules.Load(rules);
+            ColorAddRules.Load(rules);
 
             BuildList(rules, art, "VehicleTypes", UnitTypeClass.Array, (id, i) => new UnitTypeClass());
             BuildList(rules, art, "InfantryTypes", InfantryTypeClass.Array, (id, i) => new InfantryTypeClass());

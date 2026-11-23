@@ -847,6 +847,11 @@ namespace Ra2md.World
         public double GateCloseDelay;
         public bool SuperWeaponPerBuilding;
         public bool CrateBeneath;
+        // ---- 秘密实验室（参考 secret_lab.rs）：启用标志 + 三族生产覆盖类型名 ----
+        public bool SecretLab;
+        public string SecretInfantry;
+        public string SecretUnit;
+        public string SecretBuilding;
         public static BuildingTypeClass Find(string id) => TypeTables.Find(Array, id);
         public static BuildingTypeClass FindByIndex(int i) => TypeTables.FindByIndex(Array, i);
 
@@ -883,6 +888,10 @@ namespace Ra2md.World
             GateCloseDelay = sec.GetDouble("GateCloseDelay", 0.0);
             SuperWeaponPerBuilding = sec.GetBool("SuperWeaponPerBuilding");
             CrateBeneath = sec.GetBool("CrateBeneath");
+            SecretLab = sec.GetBool("SecretLab", false);
+            SecretInfantry = sec.GetString("SecretInfantry", string.Empty);
+            SecretUnit = sec.GetString("SecretUnit", string.Empty);
+            SecretBuilding = sec.GetString("SecretBuilding", string.Empty);
             var hostName = sec.GetString("PowersUpBuilding", string.Empty);
             if (!string.IsNullOrEmpty(hostName)) PowersUpBuilding = hostName;
             PowersUpToLevel = sec.GetInt("PowersUpToLevel", PowersUpToLevel);
@@ -2071,6 +2080,28 @@ namespace Ra2md.World
         public int[] Rgb = new int[3];
     }
 
+    /// <summary>[CombatDamage] 桥接/战斗路由固定弹头引用（参考 bridge_warheads.rs；空名/none 留空，世界初始化时再解析弹头表）。</summary>
+    public static class BridgeWarheadRules
+    {
+        public static string IonCannonWarhead;
+        public static string C4Warhead;
+        public static string CrushWarhead;
+
+        public static void Load(RulesDatabase rules)
+        {
+            var combat = rules.GetSection("CombatDamage");
+            IonCannonWarhead = NormalizeNone(combat?.GetString("IonCannonWarhead", string.Empty));
+            C4Warhead = NormalizeNone(combat?.GetString("C4Warhead", string.Empty));
+            CrushWarhead = NormalizeNone(combat?.GetString("CrushWarhead", string.Empty));
+        }
+
+        private static string NormalizeNone(string value)
+        {
+            value = value ?? string.Empty;
+            return string.Equals(value, "none", StringComparison.OrdinalIgnoreCase) ? string.Empty : value;
+        }
+    }
+
     /// <summary>威胁系数 [General] 默认表（参考 threat_coefficients.rs；五键缺省 0）。</summary>
     public static class ThreatCoefficientRules
     {
@@ -2152,6 +2183,7 @@ namespace Ra2md.World
             ColorSchemeRules.Load(rules);
             ColorAddRules.Load(rules);
             ThreatCoefficientRules.Load(rules);
+            BridgeWarheadRules.Load(rules);
 
             BuildList(rules, art, "VehicleTypes", UnitTypeClass.Array, (id, i) => new UnitTypeClass());
             BuildList(rules, art, "InfantryTypes", InfantryTypeClass.Array, (id, i) => new InfantryTypeClass());

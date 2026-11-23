@@ -111,7 +111,7 @@
 | building_rubble.rs | 建筑残骸 | 待核对 |
 | building_upgrade.rs | 建筑升级槽：PowersUpBuilding(24 字符，空保留，`none` 为字面文本)、PowersUpToLevel(默认 -1，不钳制)、Upgrades(默认 0，不钳制)；3 槽 PowerUp{1..3}Anim/DamagedAnim/LocXX/YY/ZZ/YSort（读 ART 段，仅 Upgrades>0 的槽位可达） | BuildingTypeClass 已补主机名/等级/槽位数与 3 条 BuildingPowerUpArt 记录（Anim/受损 Anim/三坐标/YSort），按 ImageId 取 art 段 | 部分 | 缺口：主机名→BuildingType 索引闭包未解析；升级安装/退役事务、槽位容量门控、跨 INI 层保留旧值的运行时规则未实现 |
 | building_extra_power.rs | 额外供能 | 待核对 |
-| building_select_bracket.rs | 选中框 | 待核对 |
+| building_select_bracket.rs | Phobos 建筑选中框锚点枚举：Top(默认)/LeftTop/LeftBottom/Bottom/RightBottom/RightTop，小写匹配，未知词保留缺省 | 无 | 未落地 | 属 Phobos 渲染扩展，并入 #115/#108；选中框角点锚定计算未实现 |
 | gattling_type.rs | 加特林分段：IsGattling、WeaponStages、RateUp/RateDown；IsGattling 且 WeaponStages>1 时读 Stage1..N/EliteStage1..N（15 格连续块，无钳制，Stage7 叠写 EliteStage1、EliteStage7 叠写 RateUp） | TechnoTypeClass 已补 IsGattling 与 15 格 GattlingBlock，按原生顺序读 WeaponStages/RateUp/RateDown，门控循环读 Stage/EliteStage 并保留叠写槽位 | 部分 | 缺口：分段阈值→开火速率/阶段状态机（GattlingState 累加、阶段切换、精英表）运行时未实现；块外越界键（EliteStage9+/Stage15+）按参考残留口径丢弃 |
 | gunner_turrets.rs | 炮手/IFV 炮塔：Gunner、IsChargeTurret；18 武器槽炮塔表（缺省 -1）；原版仅 Vehicle `FV` 读 17 对 *TurretIndex/*TurretWeapon（索引字面缺省、武器缺省 -1；武器=-1 写 charge 位，否则炮塔号写入武器槽）；Ares 路线 Gunner 车辆另读 WeaponTurretIndex{N}/WeaponUIName{N} 与扩展表 | TechnoTypeClass 已补 Gunner/IsChargeTurret、18 槽 TurretSlots（-1 初值）、ExtraTurrets/TurretUiNames；FV 17 对映射按原生缺省口径落地 | 部分 | 缺口：Ares 路线编号炮塔别名/UI 名标签未读；炮塔号→模型精灵/朝向切换运行时未实现；武器槽越界自定义索引按参考安全边界忽略 |
 | missile_spawn.rs | 三族火箭块（V3Rocket/DMisl/CMisl）：PauseFrames/TiltFrames/PitchInitial/PitchFinal/TurnRate/RaiseRate/Acceleration/Altitude/Damage/EliteDamage/BodyLength/LazyCurve/Type；[CombatDamage] 普通+精英弹头（精英缺省回退本族普通）；CMisl 加速度缺省回退 DMisl 当场值；构造缺省 V3(0/60/0/1.0/0.05/1/0.4/768/1000/1000/256/true)、DMisl(10/60/0/1.0/0.05/1/0.4/768/1000/1000/128/false)、CMisl(10/30/1.0/1.0/1.0/1/0.6/768/500/500/128/false) | MissileSpawnParams + MissileSpawnRules 三族块已落地，按 [General] 前缀读标量与 Type，[CombatDamage] 读双弹头，含 CMisl 加速度回退与精英弹头回退 | 部分 | 缺口：TypeName/Warhead 未做类型表索引闭包；火箭族判定 family_of/rocket_family、神风等待帧、火箭 locomotor 俯仰/爬升/弹道与 Detonate 精英选择运行时未实现；Ares CustomMissile 块（起飞/尾迹动画、间距、自定义武器）未读 |
@@ -139,7 +139,7 @@
 | airstrike.rs | TechnoType 空袭小队配置：AirstrikeTeam/EliteAirstrikeTeam（精英缺省回退普通计数）、AirstrikeTeamType/EliteAirstrikeTeamType（精英类型空串回退普通类型）、AirstrikeRechargeTime/EliteAirstrikeRechargeTime（帧，无 clamp/缩放，精英缺省回退普通）；类型名经飞机注册表解析 | TechnoTypeClass 已补六个字段与读取，精英计数/类型/缺额回退普通档口径已对齐 | 部分 | 缺口：小队飞机类型名未做 AircraftType 索引闭包；空袭小队生成、精英档选取与充能计时运行时未实现（#129） |
 | airstrike_targets.rs | Phobos 弹头 `AirstrikeTargets=` 目标类别掩码：Infantry1/Unit2/Building4/Aircraft8/All15，缺省 Building4；逗号分隔大小写不敏感；none/land/water/empty 仅占位不命名类别；未知 token 保留缺省；资格判定中 Aircraft 走 Unit 位 | WarheadTypeClass 已补 AirstrikeTargets 掩码字段（缺省 4）与列表解析（All 置 15、占位词跳过、未知 token 保留缺省） | 部分 | 缺口：空袭目标资格判定（步兵/载具/建筑/飞机分位）未接入目标选择运行时；Phobos 扩展随 #115 |
 | aircraft_trailer.rs | 飞机尾迹 | 待核对 |
-| bridge_warheads.rs | 桥弹头 | 待核对 |
+| bridge_warheads.rs | [CombatDamage] 桥接/战斗路由固定弹头引用：IonCannonWarhead（绕过 BridgeStrength RNG 门控、开启 3 次重试循环）、C4Warhead（炸桥地面乘员强制处决弹头）、CrushWarhead（DamageSelf=no 的来源也可进地面受击列表）；存名留空/none，世界初始化时按弹头表解析 WarheadId | BridgeWarheadRules 静态类已落地三键读取与 none→空名归一 | 部分 | 缺口：弹头名→WarheadType 索引闭包未解析；桥强度 RNG 门控跳过、重试循环、炸桥处决与碾压受击名单判定未接入战斗运行时（#127） |
 | terrain_rules.rs | 12 类 LandType（Clear/Road/Water/Rock/Wall/Tiberium/Beach/Rough/Ice/Railroad/Tunnel/Weeds）；每段 Buildable、Foot/Track/Wheel/Hover/Float/Amphibious/FloatBeach 速度代价（缺键 1.0、Winged 硬 1.0、≥1.0 截 1.0、%/100）；GroundBlocked 硬编码 Water/Rock/Wall；TMP 地形字节→LandType 表 [0,8,8,8,8,10,9,3,3,2,6,1,1,0,7,3] | RulesDatabase.TerrainRules/LandType/LandTypeSemantics（本轮新增并装配进 TypeTables.Build） | 部分 | 缺口：地图 subtile 字节尚未经 LandFromTmpTerrain 落到格语义；速度代价未被移动/寻路消费；缺段零行（全阻）口径已保留但未接入通行判定 |
 | voxel_anim_type.rs / voxel_frame_catalog.rs / voxel_model_plan.rs / voxel_asset_catalog.rs | 体素动画/帧目录/模型计划 | 待核对 |
 | effect_asset_catalog.rs / terrain_asset_catalog.rs / buildup_asset_catalog.rs / alpha_image_assets.rs | 资源目录 | 待核对 |
@@ -147,7 +147,7 @@
 | theme_ini.rs | 主题 INI | 待核对 |
 | movies.rs | 影片注册 | 待核对 |
 | campaigns.rs / campaign_loading.rs | 战役 | 待核对 |
-| secret_lab.rs | 秘密实验室 | 待核对 |
-| hunter_seeker.rs | 猎手无人机 | 待核对 |
+| secret_lab.rs | BuildingType 秘密生产：`SecretLab=` 布尔（ReadBool 以现有字节为缺省，无 clamp）；三族生产覆盖名 SecretInfantry/SecretUnit/SecretBuilding（步兵/载具/建筑顺序，Option 名，解析期存词法）；另有 [General] SecretInfantry/SecretUnits/SecretBuildings 全局缺省覆盖 | BuildingTypeClass 已补 SecretLab 标志与 SecretInfantry/SecretUnit/SecretBuilding 三名字段并读取 | 部分 | 缺口：三族覆盖名→类型索引闭包未解析；[General] 全局缺省覆盖未读；秘密实验室建造门控、占领/生成奖励（Ares PossibleBoons/GenerateOnCapture）与可选类型抽取运行时未实现（#115/#128） |
+| hunter_seeker.rs | Ares 猎手无人机超武配置：unit_type（Option 单位类型）、buildings（建筑类型列表）、max_count（构造缺省 1）、random_only（缺省 false）；仅存不可变配置，运行时单位状态另属 sim | 无 | 未落地 | 属 Ares 超武扩展，并入 #115/#129；SW 侧单位/建筑名单绑定、数量上限与随机选取规则未实现；类型侧 HunterSeekerIgnore 已落地 |
 | radar_event_config.rs | 雷达事件 | 待核对 |
 | retail_sources.rs / retail_ini_fixture.rs / rule_policy.rs / compatibility.rs / error.rs / mod.rs | 工具/装配/错误 | 待核对 |

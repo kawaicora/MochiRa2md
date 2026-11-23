@@ -1325,6 +1325,79 @@ namespace Ra2md.World
         }
     }
 
+    /// <summary>地形 LandType（参考 rules/terrain_rules.rs，12 类，序号即原生行号）。</summary>
+    public enum LandType { Clear = 0, Road, Water, Rock, Wall, Tiberium, Beach, Rough, Ice, Railroad, Tunnel, Weeds }
+
+    /// <summary>一类地形的通行/建造语义；SpeedCosts 顺序对齐 SpeedType（Foot…FloatBeach），0 = 该速度类型不可通行。</summary>
+    public sealed class LandTypeSemantics
+    {
+        public bool Buildable;
+        public bool GroundBlocked;
+        public readonly float[] SpeedCosts = new float[8];
+    }
+
+    /// <summary>
+    /// 地形通行表（参考 rules/terrain_rules.rs）：缺段保留零行（全速度类型阻断、不可建造）；
+    /// 段内缺键回满速 1.0；Winged 槽硬存 1.0；数值 ≥1.0 截到 1.0，% 按 /100。
+    /// GroundBlocked 硬编码：Water / Rock / Wall。
+    /// </summary>
+    public static class TerrainRules
+    {
+        public const int LandTypeCount = 12;
+        public static readonly LandTypeSemantics[] Rows = new LandTypeSemantics[LandTypeCount];
+        private static readonly string[] SectionNames =
+            { "Clear", "Road", "Water", "Rock", "Wall", "Tiberium", "Beach", "Rough", "Ice", "Railroad", "Tunnel", "Weeds" };
+
+        static TerrainRules()
+        {
+            for (var i = 0; i < LandTypeCount; i++)
+            {
+                Rows[i] = new LandTypeSemantics();
+                Rows[i].GroundBlocked = i == (int)LandType.Water || i == (int)LandType.Rock || i == (int)LandType.Wall;
+            }
+        }
+
+        public static LandTypeSemantics Row(LandType land) => Rows[(int)land];
+
+        /// <summary>原生 subtile 地形字节 → LandType 表（参考 terrain_rules.rs TMP_TERRAIN_TO_LAND_TYPE）；越界回落 Clear。</summary>
+        private static readonly int[] TmpToLand = { 0, 8, 8, 8, 8, 10, 9, 3, 3, 2, 6, 1, 1, 0, 7, 3 };
+        public static LandType LandFromTmpTerrain(byte b) => b < 16 ? (LandType)TmpToLand[b] : LandType.Clear;
+
+        public static void Load(RulesDatabase rules)
+        {
+            for (var i = 0; i < LandTypeCount; i++)
+            {
+                var sec = rules.GetSection(SectionNames[i]);
+                if (sec == null) continue; // 缺段保留零行
+                var row = Rows[i];
+                row.Buildable = sec.GetBool("Buildable", false);
+                row.SpeedCosts[(int)SpeedType.Foot] = (float)ReadCost(sec, "Foot", 1.0);
+                row.SpeedCosts[(int)SpeedType.Track] = (float)ReadCost(sec, "Track", 1.0);
+                row.SpeedCosts[(int)SpeedType.Wheel] = (float)ReadCost(sec, "Wheel", 1.0);
+                row.SpeedCosts[(int)SpeedType.Hover] = (float)ReadCost(sec, "Hover", 1.0);
+                row.SpeedCosts[(int)SpeedType.Winged] = 1f; // 原生硬存 1.0，不读 INI
+                row.SpeedCosts[(int)SpeedType.Float] = (float)ReadCost(sec, "Float", 1.0);
+                row.SpeedCosts[(int)SpeedType.Amphibious] = (float)ReadCost(sec, "Amphibious", 1.0);
+                row.SpeedCosts[(int)SpeedType.FloatBeach] = (float)ReadCost(sec, "FloatBeach", 1.0);
+            }
+        }
+
+        private static double ReadCost(IniSection sec, string key, double fallback)
+        {
+            var text = sec.GetString(key, null);
+            if (string.IsNullOrWhiteSpace(text)) return fallback;
+            text = text.Trim();
+            var percent = text.EndsWith("%");
+            var num = percent ? text.Substring(0, text.Length - 1).Trim() : text;
+            if (!double.TryParse(num, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var v)) return 0.0;
+            if (percent) v /= 100.0;
+            if (v >= 1.0) v = 1.0;
+            if (!double.IsFinite(v)) v = 0.0;
+            return v;
+        }
+    }
+
     /// <summary>建造前提六组（参考 prerequisite.rs：POWER/FACTORY/BARRACKS/RADAR/TECH/PROC），成员来自 [General] 对应列表。</summary>
     public static class PrerequisiteGroups
     {
@@ -1375,6 +1448,7 @@ namespace Ra2md.World
             ArmorTypes.Array.Clear();
             ArmorTypes.Array.AddRange(rules.GetValueList("ArmorTypes"));
             PrerequisiteGroups.Load(rules);
+            TerrainRules.Load(rules);
 
             BuildList(rules, art, "VehicleTypes", UnitTypeClass.Array, (id, i) => new UnitTypeClass());
             BuildList(rules, art, "InfantryTypes", InfantryTypeClass.Array, (id, i) => new InfantryTypeClass());

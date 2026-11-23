@@ -135,7 +135,7 @@
 | airstrike.rs / airstrike_targets.rs | 空袭 | 待核对 |
 | aircraft_trailer.rs | 飞机尾迹 | 待核对 |
 | bridge_warheads.rs | 桥弹头 | 待核对 |
-| terrain_rules.rs | 地形规则 | 待核对 |
+| terrain_rules.rs | 12 类 LandType（Clear/Road/Water/Rock/Wall/Tiberium/Beach/Rough/Ice/Railroad/Tunnel/Weeds）；每段 Buildable、Foot/Track/Wheel/Hover/Float/Amphibious/FloatBeach 速度代价（缺键 1.0、Winged 硬 1.0、≥1.0 截 1.0、%/100）；GroundBlocked 硬编码 Water/Rock/Wall；TMP 地形字节→LandType 表 [0,8,8,8,8,10,9,3,3,2,6,1,1,0,7,3] | RulesDatabase.TerrainRules/LandType/LandTypeSemantics（本轮新增并装配进 TypeTables.Build） | 部分 | 缺口：地图 subtile 字节尚未经 LandFromTmpTerrain 落到格语义；速度代价未被移动/寻路消费；缺段零行（全阻）口径已保留但未接入通行判定 |
 | voxel_anim_type.rs / voxel_frame_catalog.rs / voxel_model_plan.rs / voxel_asset_catalog.rs | 体素动画/帧目录/模型计划 | 待核对 |
 | effect_asset_catalog.rs / terrain_asset_catalog.rs / buildup_asset_catalog.rs / alpha_image_assets.rs | 资源目录 | 待核对 |
 | object_image.rs | 图像/Image 解析 | 待核对 |

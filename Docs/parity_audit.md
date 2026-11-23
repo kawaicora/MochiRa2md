@@ -110,7 +110,7 @@
 | building_light.rs | 建筑灯光可见性 | 待核对 |
 | building_rubble.rs | 建筑残骸 | 待核对 |
 | building_upgrade.rs | 建筑升级槽：PowersUpBuilding(24 字符，空保留，`none` 为字面文本)、PowersUpToLevel(默认 -1，不钳制)、Upgrades(默认 0，不钳制)；3 槽 PowerUp{1..3}Anim/DamagedAnim/LocXX/YY/ZZ/YSort（读 ART 段，仅 Upgrades>0 的槽位可达） | BuildingTypeClass 已补主机名/等级/槽位数与 3 条 BuildingPowerUpArt 记录（Anim/受损 Anim/三坐标/YSort），按 ImageId 取 art 段 | 部分 | 缺口：主机名→BuildingType 索引闭包未解析；升级安装/退役事务、槽位容量门控、跨 INI 层保留旧值的运行时规则未实现 |
-| building_extra_power.rs | 额外供能 | 待核对 |
+| building_extra_power.rs | BuildingType `ExtraPower=`：正值存为输出，负值取反存入耗电并清零输出；缺省 = 当前输出（>0）否则当前耗电取反；多层 pass 语义：后续非负值保留旧耗电，后续负值替换耗电并清输出，缺键重读缺省（与 `Power=` 非负分支清耗电不同） | BuildingTypeClass 已补 ExtraPowerOutput/ExtraPowerDrain 与单 pass 读取（负→耗电、清输出；缺省按当前输出/耗电推算） | 部分 | 缺口：多层 INI 叠加时"后续非负保留旧耗电/缺键重读缺省"的跨 pass 保留口径未实现；吸能者每乘员输出、超荷间隙仪耗电增量与盈余阈值判定未接入供能运行时（#128） |
 | building_select_bracket.rs | Phobos 建筑选中框锚点枚举：Top(默认)/LeftTop/LeftBottom/Bottom/RightBottom/RightTop，小写匹配，未知词保留缺省 | 无 | 未落地 | 属 Phobos 渲染扩展，并入 #115/#108；选中框角点锚定计算未实现 |
 | gattling_type.rs | 加特林分段：IsGattling、WeaponStages、RateUp/RateDown；IsGattling 且 WeaponStages>1 时读 Stage1..N/EliteStage1..N（15 格连续块，无钳制，Stage7 叠写 EliteStage1、EliteStage7 叠写 RateUp） | TechnoTypeClass 已补 IsGattling 与 15 格 GattlingBlock，按原生顺序读 WeaponStages/RateUp/RateDown，门控循环读 Stage/EliteStage 并保留叠写槽位 | 部分 | 缺口：分段阈值→开火速率/阶段状态机（GattlingState 累加、阶段切换、精英表）运行时未实现；块外越界键（EliteStage9+/Stage15+）按参考残留口径丢弃 |
 | gunner_turrets.rs | 炮手/IFV 炮塔：Gunner、IsChargeTurret；18 武器槽炮塔表（缺省 -1）；原版仅 Vehicle `FV` 读 17 对 *TurretIndex/*TurretWeapon（索引字面缺省、武器缺省 -1；武器=-1 写 charge 位，否则炮塔号写入武器槽）；Ares 路线 Gunner 车辆另读 WeaponTurretIndex{N}/WeaponUIName{N} 与扩展表 | TechnoTypeClass 已补 Gunner/IsChargeTurret、18 槽 TurretSlots（-1 初值）、ExtraTurrets/TurretUiNames；FV 17 对映射按原生缺省口径落地 | 部分 | 缺口：Ares 路线编号炮塔别名/UI 名标签未读；炮塔号→模型精灵/朝向切换运行时未实现；武器槽越界自定义索引按参考安全边界忽略 |
@@ -145,9 +145,9 @@
 | effect_asset_catalog.rs / terrain_asset_catalog.rs / buildup_asset_catalog.rs / alpha_image_assets.rs | 资源目录 | 待核对 |
 | object_image.rs | 图像/Image 解析 | 待核对 |
 | theme_ini.rs | 主题 INI | 待核对 |
-| movies.rs | 影片注册 | 待核对 |
+| movies.rs | 进程影片注册表（ARTMD.INI `[Movies]`，场景规则 pass 不替换）：每条 VALUE 为影片名，空串不入表，名重复不重复登记；Movie_From_Name ASCII 大小写不敏感首命中，`<none>` 为哨兵返回 -1，裸 `none` 可作普通条目；未知名不分配 | 我方影片列表走 GlobalConfigManager 硬编码苏/盟两组，未解析 ARTMD `[Movies]` 注册表 | 未落地 | 缺口：ARTMD `[Movies]` 名表装载、名↔索引双向查找未实现；影片槽位选择/片头结算调用未接（#61/#130） |
 | campaigns.rs / campaign_loading.rs | 战役 | 待核对 |
 | secret_lab.rs | BuildingType 秘密生产：`SecretLab=` 布尔（ReadBool 以现有字节为缺省，无 clamp）；三族生产覆盖名 SecretInfantry/SecretUnit/SecretBuilding（步兵/载具/建筑顺序，Option 名，解析期存词法）；另有 [General] SecretInfantry/SecretUnits/SecretBuildings 全局缺省覆盖 | BuildingTypeClass 已补 SecretLab 标志与 SecretInfantry/SecretUnit/SecretBuilding 三名字段并读取 | 部分 | 缺口：三族覆盖名→类型索引闭包未解析；[General] 全局缺省覆盖未读；秘密实验室建造门控、占领/生成奖励（Ares PossibleBoons/GenerateOnCapture）与可选类型抽取运行时未实现（#115/#128） |
 | hunter_seeker.rs | Ares 猎手无人机超武配置：unit_type（Option 单位类型）、buildings（建筑类型列表）、max_count（构造缺省 1）、random_only（缺省 false）；仅存不可变配置，运行时单位状态另属 sim | 无 | 未落地 | 属 Ares 超武扩展，并入 #115/#129；SW 侧单位/建筑名单绑定、数量上限与随机选取规则未实现；类型侧 HunterSeekerIgnore 已落地 |
-| radar_event_config.rs | 雷达事件 | 待核对 |
+| radar_event_config.rs | `[General]` 雷达事件四标量：RadarEventMinRadius(int，构造缺省 5)、RadarEventSpeed(f32 缺省 1.0)、RadarEventRotationSpeed(0.1)、RadarEventColorSpeed(0.05)；ReadInt 遇小数点截断；RadarEventSuppressionDistances/VisibilityDurations/Durations/Duration 三组六值表原生解析但从不拷入活 17 行事件表（死数据，不读） | RadarEventConfig 静态类已落地四标量缺省值与 [General] 读取 | 部分 | 缺口：缩放入场/旋转/颜色淡出动画未接入雷达小地图 ping 矩形渲染（#124/#130）；死时长表按口径不实现 |
 | retail_sources.rs / retail_ini_fixture.rs / rule_policy.rs / compatibility.rs / error.rs / mod.rs | 工具/装配/错误 | 待核对 |

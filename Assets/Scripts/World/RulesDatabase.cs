@@ -852,6 +852,9 @@ namespace Ra2md.World
         public string SecretInfantry;
         public string SecretUnit;
         public string SecretBuilding;
+        // ---- 额外供能（参考 building_extra_power.rs）：正值输出，负值转为耗电并清零输出 ----
+        public int ExtraPowerOutput;
+        public int ExtraPowerDrain;
         public static BuildingTypeClass Find(string id) => TypeTables.Find(Array, id);
         public static BuildingTypeClass FindByIndex(int i) => TypeTables.FindByIndex(Array, i);
 
@@ -892,6 +895,10 @@ namespace Ra2md.World
             SecretInfantry = sec.GetString("SecretInfantry", string.Empty);
             SecretUnit = sec.GetString("SecretUnit", string.Empty);
             SecretBuilding = sec.GetString("SecretBuilding", string.Empty);
+            var extraCurrent = ExtraPowerOutput > 0 ? ExtraPowerOutput : -ExtraPowerDrain;
+            var extra = sec.GetInt("ExtraPower", extraCurrent);
+            ExtraPowerOutput = extra;
+            if (extra < 0) { ExtraPowerDrain = -extra; ExtraPowerOutput = 0; }
             var hostName = sec.GetString("PowersUpBuilding", string.Empty);
             if (!string.IsNullOrEmpty(hostName)) PowersUpBuilding = hostName;
             PowersUpToLevel = sec.GetInt("PowersUpToLevel", PowersUpToLevel);
@@ -2080,6 +2087,25 @@ namespace Ra2md.World
         public int[] Rgb = new int[3];
     }
 
+    /// <summary>[General] 雷达事件缩放四标量（参考 radar_event_config.rs；三组六值时长/压制表原生解析但不进活体表，此处不读）。</summary>
+    public static class RadarEventConfig
+    {
+        public static int MinRadius = 5;
+        public static float Speed = 1.0f;
+        public static float RotationSpeed = 0.1f;
+        public static float ColorSpeed = 0.05f;
+
+        public static void Load(RulesDatabase rules)
+        {
+            var general = rules.GetSection("General");
+            if (general == null) return;
+            MinRadius = general.GetInt("RadarEventMinRadius", MinRadius);
+            Speed = (float)general.GetDouble("RadarEventSpeed", Speed);
+            RotationSpeed = (float)general.GetDouble("RadarEventRotationSpeed", RotationSpeed);
+            ColorSpeed = (float)general.GetDouble("RadarEventColorSpeed", ColorSpeed);
+        }
+    }
+
     /// <summary>[CombatDamage] 桥接/战斗路由固定弹头引用（参考 bridge_warheads.rs；空名/none 留空，世界初始化时再解析弹头表）。</summary>
     public static class BridgeWarheadRules
     {
@@ -2184,6 +2210,7 @@ namespace Ra2md.World
             ColorAddRules.Load(rules);
             ThreatCoefficientRules.Load(rules);
             BridgeWarheadRules.Load(rules);
+            RadarEventConfig.Load(rules);
 
             BuildList(rules, art, "VehicleTypes", UnitTypeClass.Array, (id, i) => new UnitTypeClass());
             BuildList(rules, art, "InfantryTypes", InfantryTypeClass.Array, (id, i) => new InfantryTypeClass());

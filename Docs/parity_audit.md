@@ -72,7 +72,7 @@
 | native_processing.rs / processed_type.rs / pass_processor.rs / pass_families.rs / pass_techno.rs / pass_references.rs / pass_houses.rs / registry_state.rs / type_projections.rs / processed_layers.rs / general_projections.rs / ares_rules_ext.rs / ares_house_state.rs | 有序规则 pass：Damage/Range/Speed/Warhead/Projectile/动画/类型引用回填 | 待核对 |
 | native_ini_hash.rs | 原生 INI 哈希键直读 | 待核对 |
 | native_processing 目录其余 | 见上 | 待核对 |
-| object_type/queries.rs | 类型查询方法（可建造/射程/前提/归属） | 待核对 |
+| object_type/queries.rs | 类型查询门面：AllowAirstrike（可空，建筑缺省 CanC4、单位缺省 true）、武器 FLH/备用开火 FLH、PitchSpeed 0.25、RollAngle 30°/PitchAngle 20°（-1 保留、度→弧度）、NoSpawnAlt、WaterImage（载具类型引用）、SensorArray、附加超武列表、披风门控/档位、次级转向速率、选择组、水面对应图像 | TechnoTypeClass 已补 PitchSpeed/RollAngle/PitchAngle/NoSpawnAlt/WaterImage/SensorArray 字段与读取 | 部分 | 缺口：查询方法本体未实现（airstrike 门控判定、武器 FLH 偏移表、附加超武列表、披风允许/档位、次级转向速率、选择组、水面图像绑定）；武器偏移表见 weapon_offsets.rs；Ares/Phobos 扩展门面（spotlight/driver/bounty/crew/cloak-power/chronoshift/designator/inhibitor 等）未落地 |
 | ares_techno_type.rs | Ares Techno 扩展 | 待核对 |
 | ares_building_type.rs | Ares 建筑扩展 | 待核对 |
 | ares_weapon.rs | Ares 武器扩展 | 待核对 |

@@ -124,6 +124,17 @@ namespace Ra2md.World
             return sec != null ? sec.GetBool(key, fallback) : fallback;
         }
 
+        /// <summary>角度键：缺省回 defaultDegrees 弧度；-1 保留当前弧度；其余度数转弧度（参考 RollAngle/PitchAngle 口径）。</summary>
+        internal static double ReadDegreesRadians(IniSection sec, string key, double defaultDegrees, double currentRadians)
+        {
+            var text = sec.GetString(key, null);
+            if (string.IsNullOrWhiteSpace(text)) return defaultDegrees * Math.PI / 180.0;
+            if (!double.TryParse(text.Trim(), System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var d)) return currentRadians;
+            if (d == -1.0) return currentRadians;
+            return d * Math.PI / 180.0;
+        }
+
         /// <summary>按顺序取段里的值（类型表用）：地图段存在就以地图为准，否则用规则段。</summary>
         public List<string> GetValueList(string section)
         {
@@ -409,6 +420,13 @@ namespace Ra2md.World
         public float JumpjetWobbles = 0.15f;
         public int JumpjetDeviation = 40;
         public bool JumpjetNoWobbles;
+        // 飞行姿态（参考 object_type/reader.rs：角度存弧度，-1 保留构造器默认）
+        public double PitchSpeed = 0.25;
+        public double RollAngle;          // 缺省 30° 弧度
+        public double PitchAngle;          // 缺省 20° 弧度
+        public bool NoSpawnAlt;
+        public string WaterImage;
+        public bool SensorArray;
         public bool ResourceGatherer;
         public bool ResourceDestination;
         public bool Crushable;
@@ -499,6 +517,14 @@ namespace Ra2md.World
             JumpjetWobbles = (float)sec.GetDouble("JumpjetWobbles", 0.15);
             JumpjetDeviation = sec.GetInt("JumpjetDeviation", 40);
             JumpjetNoWobbles = sec.GetBool("JumpjetNoWobbles", false);
+            RollAngle = 30.0 * Math.PI / 180.0;
+            PitchAngle = 20.0 * Math.PI / 180.0;
+            PitchSpeed = sec.GetDouble("PitchSpeed", 0.25);
+            RollAngle = RulesDatabase.ReadDegreesRadians(sec, "RollAngle", 30.0, RollAngle);
+            PitchAngle = RulesDatabase.ReadDegreesRadians(sec, "PitchAngle", 20.0, PitchAngle);
+            NoSpawnAlt = sec.GetBool("NoSpawnAlt", false);
+            WaterImage = sec.GetString("WaterImage", string.Empty);
+            SensorArray = sec.GetBool("SensorArray", false);
             ResourceGatherer = sec.GetBool("ResourceGatherer");
             ResourceDestination = sec.GetBool("ResourceDestination");
             Crushable = sec.GetBool("Crushable", Category == "Infantry");

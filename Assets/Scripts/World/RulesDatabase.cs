@@ -996,6 +996,64 @@ namespace Ra2md.World
         }
     }
 
+    /// <summary>
+    /// OverlayTypeClass（[OverlayTypes] 表；参考 rules/overlay_types.rs OverlayTypeFlags）。
+    /// 序号保留数字键跳号；标志位缺省值照参考读取口径。Land 地形语义表未落地，先存原始 Land 名。
+    /// </summary>
+    public sealed class OverlayTypeClass : TypeClassBase
+    {
+        public static readonly List<OverlayTypeClass> Array = new List<OverlayTypeClass>();
+
+        public bool Tiberium;
+        public string LandName = string.Empty;
+        public int Strength = 1;
+        public bool ChainReaction;
+        public bool Wall;
+        public bool DrawFlat = true;
+        public bool ArmorIsWood;
+        public bool LegalTarget = true;
+        public bool IsVeins;
+        public bool IsVeinholeMonster;
+        public bool Gate;
+        public bool Crushable;
+        public bool Crate;
+        public bool CrateTrigger;
+        public bool Overrides;
+        public bool IsRubble;
+        public bool IsARock;
+        public bool NoUseTileLandType = true;
+        public string RadarColor = string.Empty;
+
+        public static OverlayTypeClass Find(string id) => TypeTables.Find(Array, id);
+        public static OverlayTypeClass FindByIndex(int index) => TypeTables.FindByIndex(Array, index);
+
+        public override void LoadFrom(RulesDatabase rules, string id, int index)
+        {
+            base.LoadFrom(rules, id, index);
+            var sec = rules.GetSection(id);
+            if (sec == null) return;
+            Tiberium = sec.GetBool("Tiberium", false);
+            LandName = sec.GetString("Land", string.Empty);
+            Strength = sec.GetInt("Strength", 1);
+            ChainReaction = sec.GetBool("ChainReaction", false);
+            Wall = sec.GetBool("Wall", false);
+            DrawFlat = sec.GetBool("DrawFlat", true);
+            ArmorIsWood = string.Equals(sec.GetString("Armor", string.Empty).Trim(), "wood", StringComparison.OrdinalIgnoreCase);
+            LegalTarget = sec.GetBool("LegalTarget", true);
+            IsVeins = sec.GetBool("IsVeins", false);
+            IsVeinholeMonster = sec.GetBool("IsVeinholeMonster", false);
+            Gate = sec.GetBool("Gate", false);
+            Crushable = sec.GetBool("Crushable", false);
+            Crate = sec.GetBool("Crate", false);
+            CrateTrigger = sec.GetBool("CrateTrigger", false);
+            Overrides = sec.GetBool("Overrides", false);
+            IsRubble = sec.GetBool("IsRubble", false);
+            IsARock = sec.GetBool("IsARock", false);
+            NoUseTileLandType = sec.GetBool("NoUseTileLandType", true);
+            RadarColor = sec.GetString("RadarColor", string.Empty);
+        }
+    }
+
     /// <summary>AnimTypeClass（[Animations] 表）。</summary>
     public sealed class AnimTypeClass : TypeClassBase
     {
@@ -1223,6 +1281,7 @@ namespace Ra2md.World
             BuildList(rules, art, "Animations", AnimTypeClass.Array, (id, i) => new AnimTypeClass());
             BuildList(rules, art, "SuperWeaponTypes", SuperWeaponTypeClass.Array, (id, i) => new SuperWeaponTypeClass());
             BuildList(rules, art, "Tiberiums", TiberiumTypeClass.Array, (id, i) => new TiberiumTypeClass());
+            BuildOverlays(rules);
             BuildWeaponAndWarhead(rules);
 
             UnitCount = UnitTypeClass.Array.Count;
@@ -1257,8 +1316,35 @@ namespace Ra2md.World
             return false;
         }
 
-        private static void BuildWeaponAndWarhead(RulesDatabase rules)
+        private static void BuildOverlays(RulesDatabase rules)
         {
+            OverlayTypeClass.Array.Clear();
+            var keyed = rules.GetIndexMap("OverlayTypes");
+            if (keyed.Count > 0)
+            {
+                var max = 0;
+                foreach (var kv in keyed) if (kv.Key > max) max = kv.Key;
+                for (var i = 0; i <= max; i++)
+                {
+                    if (!keyed.TryGetValue(i, out var name) || string.IsNullOrEmpty(name)) continue;
+                    var o = new OverlayTypeClass();
+                    o.LoadFrom(rules, name, i);
+                    OverlayTypeClass.Array.Add(o);
+                }
+            }
+            else
+            {
+                var names = rules.GetValueList("OverlayTypes");
+                for (var i = 0; i < names.Count; i++)
+                {
+                    var o = new OverlayTypeClass();
+                    o.LoadFrom(rules, names[i], i);
+                    OverlayTypeClass.Array.Add(o);
+                }
+            }
+        }
+
+        private static void BuildWeaponAndWarhead(RulesDatabase rules)        {
             WeaponTypeClass.Array.Clear();
             WarheadTypeClass.Array.Clear();
             var weapons = new List<WeaponTypeClass>();

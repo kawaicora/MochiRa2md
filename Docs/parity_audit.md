@@ -99,7 +99,7 @@
 | ares_tiberium.rs | Ares 矿石扩展 | 待核对 |
 | phobos_*.rs | Phobos 扩展（crit/shields/radiation/airburst/placement_preview/...） | 待核对 |
 | terrain_object_type.rs | 地形对象（树/岩/桥/路障）类型 | 待核对 |
-| overlay_types.rs | 覆盖物类型（墙/栏/路/矿石/铺砌） | 待核对 |
+| overlay_types.rs | 覆盖物类型：序号→名字/Image，标志 Tiberium/Land/Strength 1/ChainReaction/Wall/DrawFlat true/Armor(wood)/LegalTarget true/IsVeins/IsVeinholeMonster/Gate/Crushable/Crate/CrateTrigger/Overrides/IsRubble/IsARock/NoUseTileLandType true/RadarColor；桥由硬编码序号判定（高桥 24/25/237/238；低木桥 74-101、122-125；低城桥 205-236） | RulesDatabase.OverlayTypeClass（本轮新增，标志位已解析，保留跳号索引）；OverlayMap 现仅消费序号→名字与 Image | 部分 | 缺口：Land 地形语义（LandType→通行/速度代价/挡地）表未落地；桥硬编码序号判定与高低桥区分未接；标志位尚未被渲染/通行/碾压逻辑消费；RadarColor RGB 未解析 |
 | smudge_type.rs | 弹痕/残骸污迹 | 待核对 |
 | particle_type.rs | 粒子类型 | 待核对 |
 | particle_system_type.rs | 粒子系统类型 | 待核对 |

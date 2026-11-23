@@ -785,6 +785,20 @@ namespace Ra2md.World
         public static readonly List<AircraftTypeClass> Array = new List<AircraftTypeClass>();
         public static AircraftTypeClass Find(string id) => TypeTables.Find(Array, id);
         public static AircraftTypeClass FindByIndex(int i) => TypeTables.FindByIndex(Array, i);
+        // ---- 固定 ART 尾迹（参考 aircraft_trailer.rs）：动画名 + 生成延迟帧，构造缺省 null/3 ----
+        public string TrailerAnim;
+        public int TrailerSpawnDelay = 3;
+
+        public override void LoadFrom(RulesDatabase rules, string id, int index)
+        {
+            base.LoadFrom(rules, id, index);
+            var art = ArtDatabase.Current?.Get(ResolvedImage)?.Raw;
+            if (art == null) return;
+            var trailer = art.GetString("Trailer", string.Empty);
+            if (!string.IsNullOrEmpty(trailer) && !trailer.Equals("<none>", StringComparison.OrdinalIgnoreCase))
+                TrailerAnim = trailer;
+            TrailerSpawnDelay = art.GetInt("SpawnDelay", TrailerSpawnDelay);
+        }
     }
 
     /// <summary>建筑升级槽固定 ART 记录（PowerUp1..3）。</summary>

@@ -855,6 +855,12 @@ namespace Ra2md.World
         // ---- 额外供能（参考 building_extra_power.rs）：正值输出，负值转为耗电并清零输出 ----
         public int ExtraPowerOutput;
         public int ExtraPowerDrain;
+        // ---- 半径灯光（参考 building_light.rs）：可见距离 leptons；强度/三通道色偏以千分位整数存储 ----
+        public int LightVisibility = 5000;
+        public int LightIntensity;
+        public int LightRedTint = 1000000;
+        public int LightGreenTint = 1000000;
+        public int LightBlueTint = 1000000;
         public static BuildingTypeClass Find(string id) => TypeTables.Find(Array, id);
         public static BuildingTypeClass FindByIndex(int i) => TypeTables.FindByIndex(Array, i);
 
@@ -899,6 +905,11 @@ namespace Ra2md.World
             var extra = sec.GetInt("ExtraPower", extraCurrent);
             ExtraPowerOutput = extra;
             if (extra < 0) { ExtraPowerDrain = -extra; ExtraPowerOutput = 0; }
+            LightVisibility = sec.GetInt("LightVisibility", LightVisibility);
+            LightIntensity = ReadLightUnits(sec, "LightIntensity", LightIntensity);
+            LightRedTint = ReadLightUnits(sec, "LightRedTint", LightRedTint);
+            LightGreenTint = ReadLightUnits(sec, "LightGreenTint", LightGreenTint);
+            LightBlueTint = ReadLightUnits(sec, "LightBlueTint", LightBlueTint);
             var hostName = sec.GetString("PowersUpBuilding", string.Empty);
             if (!string.IsNullOrEmpty(hostName)) PowersUpBuilding = hostName;
             PowersUpToLevel = sec.GetInt("PowersUpToLevel", PowersUpToLevel);
@@ -912,9 +923,14 @@ namespace Ra2md.World
                 PowerUpArt.Add(record);
             }
         }
-    }
 
-    /// <summary>BulletTypeClass（[Projectiles] 表，参考 rules/projectile_type.rs）。</summary>
+        // 参考 building_light.rs read_units：双精度值 ×1000 +0.1 后取整数（缺省按 current/1000.0）。
+        private static int ReadLightUnits(IniSection sec, string key, int current)
+        {
+            var value = sec.GetDouble(key, current / 1000.0);
+            return (int)(value * 1000.0 + 0.1);
+        }
+    }
     public sealed class BulletTypeClass : TypeClassBase
     {
         public static readonly List<BulletTypeClass> Array = new List<BulletTypeClass>();

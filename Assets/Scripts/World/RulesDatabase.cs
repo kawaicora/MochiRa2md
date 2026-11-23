@@ -399,6 +399,16 @@ namespace Ra2md.World
         public bool Fighter;
         public bool Landable;
         public bool JumpJet;
+        // 跳喷参数（参考 rules/jumpjet_params.rs，构造器种子值）
+        public int JumpjetTurnRate = 4;
+        public int JumpjetSpeed = 14;
+        public float JumpjetClimb = 5f;
+        public float JumpjetCrash = 5f;
+        public int JumpjetHeight = 500;
+        public float JumpjetAccel = 2f;
+        public float JumpjetWobbles = 0.15f;
+        public int JumpjetDeviation = 40;
+        public bool JumpjetNoWobbles;
         public bool ResourceGatherer;
         public bool ResourceDestination;
         public bool Crushable;
@@ -480,6 +490,15 @@ namespace Ra2md.World
             Fighter = sec.GetBool("Fighter");
             Landable = sec.GetBool("Landable");
             JumpJet = sec.GetBool("JumpJet");
+            JumpjetTurnRate = sec.GetInt("JumpjetTurnRate", 4);
+            JumpjetSpeed = sec.GetInt("JumpjetSpeed", 14);
+            JumpjetClimb = (float)sec.GetDouble("JumpjetClimb", 5.0);
+            JumpjetCrash = (float)sec.GetDouble("JumpjetCrash", 5.0);
+            JumpjetHeight = sec.GetInt("JumpjetHeight", 500);
+            JumpjetAccel = (float)sec.GetDouble("JumpjetAccel", 2.0);
+            JumpjetWobbles = (float)sec.GetDouble("JumpjetWobbles", 0.15);
+            JumpjetDeviation = sec.GetInt("JumpjetDeviation", 40);
+            JumpjetNoWobbles = sec.GetBool("JumpjetNoWobbles", false);
             ResourceGatherer = sec.GetBool("ResourceGatherer");
             ResourceDestination = sec.GetBool("ResourceDestination");
             Crushable = sec.GetBool("Crushable", Category == "Infantry");

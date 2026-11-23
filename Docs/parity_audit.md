@@ -109,7 +109,7 @@
 | foundation.rs 已列 | — | — |
 | building_light.rs | 建筑灯光可见性 | 待核对 |
 | building_rubble.rs | 建筑残骸 | 待核对 |
-| building_upgrade.rs | 建筑升级槽 | 待核对 |
+| building_upgrade.rs | 建筑升级槽：PowersUpBuilding(24 字符，空保留，`none` 为字面文本)、PowersUpToLevel(默认 -1，不钳制)、Upgrades(默认 0，不钳制)；3 槽 PowerUp{1..3}Anim/DamagedAnim/LocXX/YY/ZZ/YSort（读 ART 段，仅 Upgrades>0 的槽位可达） | BuildingTypeClass 已补主机名/等级/槽位数与 3 条 BuildingPowerUpArt 记录（Anim/受损 Anim/三坐标/YSort），按 ImageId 取 art 段 | 部分 | 缺口：主机名→BuildingType 索引闭包未解析；升级安装/退役事务、槽位容量门控、跨 INI 层保留旧值的运行时规则未实现 |
 | building_extra_power.rs | 额外供能 | 待核对 |
 | building_select_bracket.rs | 选中框 | 待核对 |
 | gattling_type.rs | 加特林 | 待核对 |

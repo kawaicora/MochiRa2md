@@ -586,6 +586,30 @@ namespace Ra2md.World
         public static AircraftTypeClass FindByIndex(int i) => TypeTables.FindByIndex(Array, i);
     }
 
+    /// <summary>建筑升级槽固定 ART 记录（PowerUp1..3）。</summary>
+    public sealed class BuildingPowerUpArt
+    {
+        public string NormalName;
+        public string DamagedName;
+        public int LocXX;
+        public int LocYY;
+        public int LocZZ;
+        public int YSort;
+
+        public void ReadPass(IniSection art, int slot)
+        {
+            var prefix = "PowerUp" + (slot + 1);
+            var normal = art.GetString(prefix + "Anim", string.Empty);
+            if (!string.IsNullOrEmpty(normal)) NormalName = normal;
+            var damaged = art.GetString(prefix + "DamagedAnim", string.Empty);
+            if (!string.IsNullOrEmpty(damaged)) DamagedName = damaged;
+            LocXX = art.GetInt(prefix + "LocXX", LocXX);
+            LocYY = art.GetInt(prefix + "LocYY", LocYY);
+            LocZZ = art.GetInt(prefix + "LocZZ", LocZZ);
+            YSort = art.GetInt(prefix + "YSort", YSort);
+        }
+    }
+
     public sealed class BuildingTypeClass : TechnoTypeClass
     {
         public static readonly List<BuildingTypeClass> Array = new List<BuildingTypeClass>();
@@ -594,6 +618,11 @@ namespace Ra2md.World
         public bool BaseNormal;
         public bool Unsellable;
         public bool WallOwner;
+        // ---- 建筑升级（PowerUp）规则 ----
+        public string PowersUpBuilding;
+        public int PowersUpToLevel = -1;
+        public int Upgrades;
+        public readonly List<BuildingPowerUpArt> PowerUpArt = new List<BuildingPowerUpArt>();
         // ---- 建筑专属字段（按参考 reader 口径）----
         public bool Powered;
         public bool PoweredSpecial;
@@ -653,6 +682,18 @@ namespace Ra2md.World
             GateCloseDelay = sec.GetDouble("GateCloseDelay", 0.0);
             SuperWeaponPerBuilding = sec.GetBool("SuperWeaponPerBuilding");
             CrateBeneath = sec.GetBool("CrateBeneath");
+            var hostName = sec.GetString("PowersUpBuilding", string.Empty);
+            if (!string.IsNullOrEmpty(hostName)) PowersUpBuilding = hostName;
+            PowersUpToLevel = sec.GetInt("PowersUpToLevel", PowersUpToLevel);
+            Upgrades = sec.GetInt("Upgrades", Upgrades);
+            var upgradeArt = ArtDatabase.Current?.Get(ResolvedImage)?.Raw;
+            var artSlots = Math.Max(Upgrades, 0);
+            for (var slot = 0; slot < 3; slot++)
+            {
+                var record = new BuildingPowerUpArt();
+                if (slot < artSlots && upgradeArt != null) record.ReadPass(upgradeArt, slot);
+                PowerUpArt.Add(record);
+            }
         }
     }
 

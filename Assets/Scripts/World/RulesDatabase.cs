@@ -347,6 +347,14 @@ namespace Ra2md.World
     }
 
     /// <summary>技术类类型（单位/步兵/飞机/建筑）的公共字段（TechnoTypeClass 的常用子集）。</summary>
+    /// <summary>单武器槽 ART 几何：FLH 三元组 + 炮管长度/粗细。</summary>
+    public sealed class WeaponSlotGeometry
+    {
+        public int[] Flh = new int[3];
+        public int BarrelLength;
+        public int BarrelThickness;
+    }
+
     public abstract class TechnoTypeClass : TypeClassBase
     {
         public int Cost;
@@ -452,6 +460,26 @@ namespace Ra2md.World
         public int BarrelCompressFrames = 1;
         public int BarrelHoldFrames = 1;
         public int BarrelRecoverFrames = 1;
+        // ---- 武器槽开火偏移/炮管几何（18 槽基础/精英 + 5 备用端口）----
+        public int TurretCount;
+        public int WeaponCount;
+        public readonly List<WeaponSlotGeometry> WeaponBase = MakeWeaponSlots();
+        public readonly List<WeaponSlotGeometry> WeaponElite = MakeWeaponSlots();
+        public readonly int[][] AlternateFlh = MakeAlternateFlh();
+
+        private static List<WeaponSlotGeometry> MakeWeaponSlots()
+        {
+            var list = new List<WeaponSlotGeometry>(18);
+            for (var i = 0; i < 18; i++) list.Add(new WeaponSlotGeometry());
+            return list;
+        }
+
+        private static int[][] MakeAlternateFlh()
+        {
+            var ports = new int[5][];
+            for (var i = 0; i < 5; i++) ports[i] = new int[3];
+            return ports;
+        }
 
         private static readonly (string IndexKey, string WeaponKey, int DefaultIndex)[] FvTurretPairs =
         {
@@ -622,6 +650,9 @@ namespace Ra2md.World
             BarrelCompressFrames = Math.Max(1, sec.GetInt("BarrelCompressFrames", BarrelCompressFrames));
             BarrelHoldFrames = Math.Max(1, sec.GetInt("BarrelHoldFrames", BarrelHoldFrames));
             BarrelRecoverFrames = Math.Max(1, sec.GetInt("BarrelRecoverFrames", BarrelRecoverFrames));
+            TurretCount = sec.GetInt("TurretCount", TurretCount);
+            WeaponCount = sec.GetInt("WeaponCount", WeaponCount);
+            ReadWeaponOffsets(ArtDatabase.Current?.Get(ResolvedImage)?.Raw);
             ResourceGatherer = sec.GetBool("ResourceGatherer");
             ResourceDestination = sec.GetBool("ResourceDestination");
             Crushable = sec.GetBool("Crushable", Category == "Infantry");
@@ -638,6 +669,50 @@ namespace Ra2md.World
             IsTrain = sec.GetBool("IsTrain");
             IsDropship = sec.GetBool("IsDropship");
             IsSimpleDeployer = sec.GetBool("IsSimpleDeployer");
+        }
+
+        private void ReadWeaponOffsets(IniSection art)
+        {
+            if (art == null) return;
+            if (TurretCount > 0)
+            {
+                var count = Math.Max(0, Math.Min(WeaponCount, 18));
+                for (var slot = 0; slot < count; slot++)
+                    ReadNumberedWeapon(art, slot, WeaponBase[slot], WeaponElite[slot]);
+            }
+            else
+            {
+                ReadLegacyWeapon(art, 0, "PrimaryFireFLH", "PBarrelLength", "PBarrelThickness",
+                    "ElitePrimaryFireFLH", "ElitePBarrelLength", "ElitePBarrelThickness");
+                ReadLegacyWeapon(art, 1, "SecondaryFireFLH", "SBarrelLength", "SBarrelThickness",
+                    "EliteSecondaryFireFLH", "EliteSBarrelLength", "EliteSBarrelThickness");
+            }
+            for (var port = 0; port < 5; port++)
+                AlternateFlh[port] = art.GetCoord3("AlternateFLH" + port, WeaponBase[0].Flh);
+        }
+
+        private static void ReadNumberedWeapon(IniSection art, int slot, WeaponSlotGeometry baseRec, WeaponSlotGeometry eliteRec)
+        {
+            var n = slot + 1;
+            baseRec.Flh = art.GetCoord3("Weapon" + n + "FLH", baseRec.Flh);
+            baseRec.BarrelLength = art.GetInt("Weapon" + n + "BarrelLength", baseRec.BarrelLength);
+            baseRec.BarrelThickness = art.GetInt("Weapon" + n + "BarrelThickness", baseRec.BarrelThickness);
+            eliteRec.Flh = art.GetCoord3("EliteWeapon" + n + "FLH", baseRec.Flh);
+            eliteRec.BarrelLength = art.GetInt("EliteWeapon" + n + "BarrelLength", baseRec.BarrelLength);
+            eliteRec.BarrelThickness = art.GetInt("EliteWeapon" + n + "BarrelThickness", baseRec.BarrelThickness);
+        }
+
+        private void ReadLegacyWeapon(IniSection art, int slot, string flhKey, string lenKey, string thickKey,
+            string eliteFlhKey, string eliteLenKey, string eliteThickKey)
+        {
+            var baseRec = WeaponBase[slot];
+            baseRec.Flh = art.GetCoord3(flhKey, baseRec.Flh);
+            baseRec.BarrelLength = art.GetInt(lenKey, baseRec.BarrelLength);
+            baseRec.BarrelThickness = art.GetInt(thickKey, baseRec.BarrelThickness);
+            var eliteRec = WeaponElite[slot];
+            eliteRec.Flh = art.GetCoord3(eliteFlhKey, baseRec.Flh);
+            eliteRec.BarrelLength = art.GetInt(eliteLenKey, baseRec.BarrelLength);
+            eliteRec.BarrelThickness = art.GetInt(eliteThickKey, baseRec.BarrelThickness);
         }
 
         /// <summary>Owner 列表是否含该国家（空 Owner = 谁都能造）。</summary>

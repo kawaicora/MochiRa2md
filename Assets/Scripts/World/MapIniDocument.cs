@@ -52,6 +52,19 @@ namespace Ra2md.World
                 System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : defaultValue;
         }
 
+        /// <summary>Read3Int：FLH 三元组 `%d,%d,%d`；缺失/残缺保留默认。</summary>
+        public int[] GetCoord3(string key, int[] defaultValue)
+        {
+            var text = GetString(key, null);
+            if (string.IsNullOrWhiteSpace(text)) return defaultValue;
+            var parts = text.Split(',');
+            if (parts.Length < 3) return defaultValue;
+            var result = new int[3];
+            for (var i = 0; i < 3; i++)
+                if (!int.TryParse(parts[i].Trim(), out result[i])) return defaultValue;
+            return result;
+        }
+
         /// <summary>ReadRange：单元格数 ×256 转 leptons，向零截断；-1 保留当前默认。</summary>
         public int GetRangeLeptons(string key, int defaultValue = 0)
         {
